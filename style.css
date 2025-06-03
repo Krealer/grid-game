@@ -1,0 +1,126 @@
+/* === GLOBAL STYLES === */
+
+body {
+  font-family: sans-serif;
+  background-color: #1a1a1a;
+  color: white;
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* === GRID CONTAINER === */
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(19, 40px); /* 19 columns (width) */
+  grid-template-rows: repeat(12, 40px);    /* 12 rows (height) */
+  gap: 2px;
+  margin-top: 20px;
+  border: 2px solid #444;
+}
+
+#game-container {
+  max-width: fit-content;
+  margin: 0 auto;
+}
+
+/* === TILE BASE === */
+
+.tile {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8em;
+  border-radius: 4px;
+  user-select: none;
+  transition: transform 0.1s ease;
+  border: 1px solid #444;
+}
+
+/* Hover effect for interactivity */
+.tile:hover {
+  transform: scale(1.05);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  box-shadow: 0 0 4px #aaa;
+}
+
+
+/* === TILE TYPES === */
+
+.tile-wall {
+  background-color: #000;
+}
+
+.tile-floor {
+  background-color: #666;
+}
+
+.tile-chest {
+  background-color: gold;
+  color: black;
+  font-weight: bold;
+}
+
+.tile-door {
+  background-color: dodgerblue;
+}
+
+.tile-enemy {
+  background-color: crimson;
+}
+
+.tile-npc {
+  background-color: seagreen;
+}
+
+/* === PLAYER TILE === */
+
+.tile-player {
+  background-color: white !important;
+  color: black;
+  font-weight: bold;
+  border: 2px solid #ccc;
+  box-shadow: 0 0 6px #fff;
+}
+
+/* === INVENTORY PANEL === */
+
+#inventory {
+  margin-top: 20px;
+  padding: 10px;
+  width: 500px;
+  background-color: #292929;
+  border: 1px solid #555;
+  border-radius: 6px;
+}
+
+#inventory h3 {
+  margin-top: 0;
+}
+#inventory ul {
+  padding-left: 20px;
+}
+
+#inventory li {
+  margin-bottom: 2px;
+}
+
+
+/* === DIALOG BOX PANEL === */
+
+#dialog-box {
+  margin-top: 10px;
+  padding: 10px;
+  width: 500px;
+  background-color: #333;
+  border: 1px solid #555;
+  border-radius: 6px;
+  font-style: italic;
+  transition: opacity 0.3s ease;
+}
+

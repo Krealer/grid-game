@@ -1,0 +1,14 @@
+[
+  ["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+  ["wall", "floor", "floor", "floor", "npc", "floor", "floor", "floor", "enemy", "floor", "chest", "floor", "floor", "floor", { "type": "door", "target": "house1", "entry": { "x": 1, "y": 1 } }, "floor", "floor", "floor", "wall"],
+  ["wall", "floor", "wall", "floor", "wall", "floor", "wall", "floor", "wall", "floor", "wall", "floor", "wall", "floor", "wall", "floor", "wall", "floor", "wall"],
+  ["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+  ["wall", "floor", "floor", "wall", "wall", "floor", "floor", "floor", "wall", "wall", "floor", "floor", "floor", "wall", "wall", "floor", "floor", "floor", "wall"],
+  ["wall", "floor", "enemy", "floor", "floor", "npc", "floor", "floor", "chest", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+  ["wall", "floor", "wall", "floor", "wall", "floor", "wall", "floor", "wall", "floor", "wall", "floor", "wall", "floor", "wall", "floor", "wall", "floor", "wall"],
+  ["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+  ["wall", "floor", "npc", "floor", "floor", "enemy", "floor", "chest", "floor", "floor", "floor", "floor", { "type": "door", "target": "house2", "entry": { "x": 1, "y": 1 } }, "floor", "floor", "floor", "floor", "floor", "wall"],
+  ["wall", "floor", "wall", "wall", "wall", "wall", "wall", "floor", "wall", "wall", "wall", "floor", "wall", "wall", "wall", "floor", "wall", "floor", "wall"],
+  ["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", { "type": "door", "target": "house3", "entry": { "x": 1, "y": 1 } }, "floor", "wall"],
+  ["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+]
