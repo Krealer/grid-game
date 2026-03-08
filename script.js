@@ -1,5 +1,6 @@
 const GRID_SIZE = 12;
 const TILE_SPEED_PER_SECOND = 2;
+const TILE_STEP_DURATION = 1 / TILE_SPEED_PER_SECOND;
 
 const MAP_LAYOUT = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -86,6 +87,11 @@ const playerState = {
   renderY: 0,
   path: [],
   moving: false,
+  stepFromX: 0,
+  stepFromY: 0,
+  stepToX: 0,
+  stepToY: 0,
+  stepElapsed: 0,
   lastTimestamp: null
 };
 
@@ -365,6 +371,10 @@ function getCurrentTilePosition() {
   };
 }
 
+function hasExistingSave(slot) {
+  return Boolean(slot && slot.element && slot.class);
+}
+
 function renderGameplayInfo() {
   const locale = getLocale();
   textNodes.gameTitle.textContent = locale.gameplayTitle;
@@ -472,7 +482,7 @@ function renderSaveSlots() {
     label.textContent = formatText(locale.slotLabel, { number: slot.slotId });
 
     value.className = 'slot-value';
-    value.textContent = slot.element && slot.class
+    value.textContent = hasExistingSave(slot)
       ? `${locale[slot.element]} • ${locale[slot.class]}`
       : locale.newGame;
 
@@ -544,8 +554,32 @@ function setPlayerPosition(x, y) {
   playerState.renderY = y;
   playerState.path = [];
   playerState.moving = false;
+  playerState.stepFromX = x;
+  playerState.stepFromY = y;
+  playerState.stepToX = x;
+  playerState.stepToY = y;
+  playerState.stepElapsed = 0;
   playerState.lastTimestamp = null;
   updatePlayerPiece();
+}
+
+function beginNextStep() {
+  if (playerState.path.length === 0) {
+    playerState.moving = false;
+    playerState.lastTimestamp = null;
+    playerState.stepElapsed = 0;
+    playerState.renderX = playerState.tileX;
+    playerState.renderY = playerState.tileY;
+    return;
+  }
+
+  const nextTile = playerState.path.shift();
+  playerState.stepFromX = playerState.tileX;
+  playerState.stepFromY = playerState.tileY;
+  playerState.stepToX = nextTile.x;
+  playerState.stepToY = nextTile.y;
+  playerState.stepElapsed = 0;
+  playerState.moving = true;
 }
 
 function goToGameScreen() {
@@ -697,31 +731,12 @@ function findPath(start, end) {
   return null;
 }
 
-function getPathStartTile() {
-  if (!playerState.moving || playerState.path.length === 0) {
-    return { x: playerState.tileX, y: playerState.tileY };
-  }
-
-  const next = playerState.path[0];
-  const traveled = Math.abs(playerState.renderX - playerState.tileX) + Math.abs(playerState.renderY - playerState.tileY);
-
-  if (traveled >= 0.5) {
-    playerState.renderX = next.x;
-    playerState.renderY = next.y;
-    return { x: next.x, y: next.y };
-  }
-
-  playerState.renderX = playerState.tileX;
-  playerState.renderY = playerState.tileY;
-  return { x: playerState.tileX, y: playerState.tileY };
-}
-
 function moveToTile(targetX, targetY) {
   if (!isGround(targetX, targetY)) {
     return;
   }
 
-  const start = getPathStartTile();
+  const start = { x: playerState.tileX, y: playerState.tileY };
 
   if (targetX === start.x && targetY === start.y) {
     return;
@@ -733,45 +748,32 @@ function moveToTile(targetX, targetY) {
     return;
   }
 
-  playerState.tileX = start.x;
-  playerState.tileY = start.y;
+  playerState.renderX = playerState.tileX;
+  playerState.renderY = playerState.tileY;
   playerState.path = path;
-  playerState.moving = true;
+  playerState.moving = false;
+  playerState.stepElapsed = 0;
   playerState.lastTimestamp = null;
+  beginNextStep();
   updatePlayerPiece();
 }
 
 function animationStep(timestamp) {
-  if (!screens.game.hidden && playerState.moving && playerState.path.length > 0) {
+  if (!screens.game.hidden && playerState.moving) {
     const dt = playerState.lastTimestamp ? (timestamp - playerState.lastTimestamp) / 1000 : 0;
     playerState.lastTimestamp = timestamp;
+    playerState.stepElapsed += dt;
 
-    const target = playerState.path[0];
-    const dx = target.x - playerState.renderX;
-    const dy = target.y - playerState.renderY;
-    const distance = Math.abs(dx) + Math.abs(dy);
+    const progress = Math.min(playerState.stepElapsed / TILE_STEP_DURATION, 1);
+    playerState.renderX = playerState.stepFromX + ((playerState.stepToX - playerState.stepFromX) * progress);
+    playerState.renderY = playerState.stepFromY + ((playerState.stepToY - playerState.stepFromY) * progress);
 
-    if (distance === 0) {
-      playerState.tileX = target.x;
-      playerState.tileY = target.y;
-      playerState.path.shift();
-    } else {
-      const step = TILE_SPEED_PER_SECOND * dt;
-      if (step >= distance) {
-        playerState.renderX = target.x;
-        playerState.renderY = target.y;
-        playerState.tileX = target.x;
-        playerState.tileY = target.y;
-        playerState.path.shift();
-      } else {
-        playerState.renderX += Math.sign(dx) * step;
-        playerState.renderY += Math.sign(dy) * step;
-      }
-    }
-
-    if (playerState.path.length === 0) {
-      playerState.moving = false;
-      playerState.lastTimestamp = null;
+    if (progress >= 1) {
+      playerState.tileX = playerState.stepToX;
+      playerState.tileY = playerState.stepToY;
+      playerState.renderX = playerState.tileX;
+      playerState.renderY = playerState.tileY;
+      beginNextStep();
     }
 
     updatePlayerPiece();
@@ -823,7 +825,7 @@ document.addEventListener('keydown', (event) => {
   }
 
   event.preventDefault();
-  const base = getPathStartTile();
+  const base = { x: playerState.tileX, y: playerState.tileY };
   moveToTile(base.x + direction.x, base.y + direction.y);
 });
 
@@ -868,11 +870,16 @@ saveSlotsList.addEventListener('click', (event) => {
     return;
   }
 
-  if (!slot.element || !slot.class) {
+  if (!hasExistingSave(slot)) {
     updateSlot(slotId, { element: null, class: null, playerData: { x: 0, y: 0 } });
+    goToElementScreen(slotId);
+    return;
   }
 
-  goToElementScreen(slotId);
+  currentSlotId = slotId;
+  const savedPos = normalizePosition(slot.playerData);
+  setPlayerPosition(savedPos.x, savedPos.y);
+  goToGameScreen();
 });
 
 elementButtons.forEach((button) => {
