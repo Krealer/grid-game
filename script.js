@@ -2,7 +2,11 @@ const GRID_SIZE = 12;
 const TILE_SPEED_PER_SECOND = 2;
 const TILE_STEP_DURATION = 1 / TILE_SPEED_PER_SECOND;
 
-const ENEMY_START = { x: 3, y: 0 };
+const ENEMY_STARTS = [
+  { id: 'enemy-fire-slime', x: 3, y: 0, nameKey: 'fireSlime', element: 'fire' },
+  { id: 'enemy-earth-slime', x: 6, y: 2, nameKey: 'earthSlime', element: 'earth' },
+  { id: 'enemy-water-slime', x: 9, y: 4, nameKey: 'waterSlime', element: 'water' }
+];
 
 const MAP_LAYOUT = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -112,13 +116,11 @@ const playerState = {
   lastTimestamp: null
 };
 
-const enemyState = createInitialEnemyState();
+let enemyStates = [];
 
 const playerPiece = document.createElement('div');
 playerPiece.className = 'player-piece';
-const enemyPiece = document.createElement('div');
-enemyPiece.className = 'enemy-piece';
-gridBoard.append(playerPiece, enemyPiece);
+gridBoard.append(playerPiece);
 
 const BATTLE_MENUS = {
   ROOT: 'root',
@@ -127,9 +129,7 @@ const BATTLE_MENUS = {
   DEFENDERS: 'defenders'
 };
 
-const FIRE_SLIME_TEMPLATE = {
-  nameKey: 'fireSlime',
-  element: 'fire',
+const SLIME_TEMPLATE = {
   hp: 20,
   attack: 3,
   drops: {
@@ -145,9 +145,12 @@ const FIRE_SLIME_TEMPLATE = {
     }
   ]
 };
+enemyStates = createInitialEnemyStates();
+
 
 const battleState = {
   menu: BATTLE_MENUS.ROOT,
+  enemyId: null,
   enemy: null,
   player: null,
   feedbackKeys: [],
@@ -187,7 +190,7 @@ const translations = {
     mage: 'Mage',
     classSaved: 'Selection saved for Slot {number}.',
     gameplayTitle: 'Grid Movement',
-    gameplayHelper: 'Tap or click a reachable gray tile to move. Tap the red enemy while next to it to battle.',
+    gameplayHelper: 'Tap or click a reachable gray tile to move. Tap a nearby slime to battle.',
     gameplaySlot: 'Slot {number}: {element} • {className}',
     battleTitle: 'Battle',
     battleStatusPlayer: 'Player',
@@ -214,6 +217,8 @@ const translations = {
     hp: 'HP',
     attack: 'Attack',
     fireSlime: 'Fire Slime',
+    earthSlime: 'Earth Slime',
+    waterSlime: 'Water Slime',
     slimeAttack: 'Slime Attack',
     swordSlash: 'Sword Slash',
     stickBonk: 'Stick Bonk',
@@ -288,6 +293,8 @@ const translations = {
     hp: 'HP',
     attack: '攻撃',
     fireSlime: 'ファイアスライム',
+    earthSlime: 'アーススライム',
+    waterSlime: 'ウォータースライム',
     slimeAttack: 'スライムアタック',
     swordSlash: 'ソードスラッシュ',
     stickBonk: 'スティックボンク',
@@ -362,6 +369,8 @@ const translations = {
     hp: 'HP',
     attack: 'Атака',
     fireSlime: 'Огненный слизень',
+    earthSlime: 'Земляной слизень',
+    waterSlime: 'Водяной слизень',
     slimeAttack: 'Атака слизня',
     swordSlash: 'Удар мечом',
     stickBonk: 'Удар палкой',
@@ -409,7 +418,7 @@ const translations = {
     mage: 'ساحر',
     classSaved: 'تم حفظ الاختيار في الخانة {number}.',
     gameplayTitle: 'الحركة على الشبكة',
-    gameplayHelper: 'انقر أو المس مربّعًا رماديًا يمكن الوصول إليه للتحرك. المس العدو الأحمر المجاور لبدء المعركة.',
+    gameplayHelper: 'انقر أو المس مربّعًا رماديًا يمكن الوصول إليه للتحرك. المس سلايمًا مجاورًا لبدء المعركة.',
     gameplaySlot: 'الخانة {number}: {element} • {className}',
     battleTitle: 'معركة',
     battleStatusPlayer: 'اللاعب',
@@ -436,6 +445,8 @@ const translations = {
     hp: 'الصحة',
     attack: 'الهجوم',
     fireSlime: 'سلايم النار',
+    earthSlime: 'سلايم الأرض',
+    waterSlime: 'سلايم الماء',
     slimeAttack: 'هجوم السلايم',
     swordSlash: 'ضربة السيف',
     stickBonk: 'ضربة العصا',
@@ -481,14 +492,18 @@ function isGround(x, y) {
   return isInsideGrid(x, y) && MAP_LAYOUT[y][x] === 0;
 }
 
-function createInitialEnemyState() {
-  if (isGround(ENEMY_START.x, ENEMY_START.y) && !(ENEMY_START.x === 0 && ENEMY_START.y === 0)) {
-    return { x: ENEMY_START.x, y: ENEMY_START.y };
+function isValidEnemySpawn(x, y, occupiedKeys) {
+  if (!isGround(x, y) || (x === 0 && y === 0)) {
+    return false;
   }
 
+  return !occupiedKeys.has(`${x},${y}`);
+}
+
+function getFirstValidEnemySpawn(occupiedKeys) {
   for (let y = 0; y < GRID_SIZE; y += 1) {
     for (let x = 0; x < GRID_SIZE; x += 1) {
-      if (isGround(x, y) && !(x === 0 && y === 0)) {
+      if (isValidEnemySpawn(x, y, occupiedKeys)) {
         return { x, y };
       }
     }
@@ -497,8 +512,38 @@ function createInitialEnemyState() {
   return { x: 1, y: 0 };
 }
 
+function createEnemyState(enemyTemplate, occupiedKeys) {
+  const { x, y } = enemyTemplate;
+  const spawn = isValidEnemySpawn(x, y, occupiedKeys) ? { x, y } : getFirstValidEnemySpawn(occupiedKeys);
+
+  occupiedKeys.add(`${spawn.x},${spawn.y}`);
+
+  return {
+    id: enemyTemplate.id,
+    x: spawn.x,
+    y: spawn.y,
+    nameKey: enemyTemplate.nameKey,
+    element: enemyTemplate.element,
+    maxHp: SLIME_TEMPLATE.hp,
+    hp: SLIME_TEMPLATE.hp,
+    attack: SLIME_TEMPLATE.attack,
+    drops: { ...SLIME_TEMPLATE.drops },
+    skills: SLIME_TEMPLATE.skills.map((skill) => ({ ...skill }))
+  };
+}
+
+function createInitialEnemyStates() {
+  const occupiedKeys = new Set();
+
+  return ENEMY_STARTS.map((enemyTemplate) => createEnemyState(enemyTemplate, occupiedKeys));
+}
+
+function getEnemyAtTile(x, y) {
+  return enemyStates.find((enemy) => enemy.x === x && enemy.y === y) || null;
+}
+
 function isEnemyTile(x, y) {
-  return enemyState.x === x && enemyState.y === y;
+  return Boolean(getEnemyAtTile(x, y));
 }
 
 function isWalkable(x, y) {
@@ -636,15 +681,16 @@ function renderInfoDetails() {
 }
 
 
-function createEnemyForBattle() {
+function createEnemyForBattle(enemy) {
   return {
-    nameKey: FIRE_SLIME_TEMPLATE.nameKey,
-    element: FIRE_SLIME_TEMPLATE.element,
-    maxHp: FIRE_SLIME_TEMPLATE.hp,
-    hp: FIRE_SLIME_TEMPLATE.hp,
-    attack: FIRE_SLIME_TEMPLATE.attack,
-    drops: { ...FIRE_SLIME_TEMPLATE.drops },
-    skills: FIRE_SLIME_TEMPLATE.skills.map((skill) => ({ ...skill }))
+    id: enemy.id,
+    nameKey: enemy.nameKey,
+    element: enemy.element,
+    maxHp: enemy.maxHp,
+    hp: enemy.hp,
+    attack: enemy.attack,
+    drops: { ...enemy.drops },
+    skills: enemy.skills.map((skill) => ({ ...skill }))
   };
 }
 
@@ -764,10 +810,15 @@ function resolveDropMessage(enemy) {
 function endBattleVictory() {
   const dropResult = resolveDropMessage(battleState.enemy);
 
+  if (battleState.enemyId) {
+    enemyStates = enemyStates.filter((enemy) => enemy.id !== battleState.enemyId);
+  }
+
   battleState.resultMessageKey = dropResult.key;
   battleState.resultItemKey = dropResult.itemKey;
   battleState.menu = BATTLE_MENUS.ROOT;
 
+  buildGrid();
   renderVictoryScreen();
   showScreen('victory');
 }
@@ -869,10 +920,20 @@ function renderBattleUI() {
     updateHpBar(textNodes.battlePlayerHpFill, 0, 1);
     textNodes.battleSubtitle.textContent = '';
     battleOptionsList.innerHTML = '';
+    const battleEnemyPiece = document.querySelector('.battle-enemy');
+    if (battleEnemyPiece) {
+      battleEnemyPiece.classList.remove('battle-enemy-fire', 'battle-enemy-earth', 'battle-enemy-water');
+    }
     return;
   }
 
   textNodes.battleEnemyName.textContent = locale[enemy.nameKey];
+
+  const battleEnemyPiece = document.querySelector('.battle-enemy');
+  if (battleEnemyPiece) {
+    battleEnemyPiece.classList.remove('battle-enemy-fire', 'battle-enemy-earth', 'battle-enemy-water');
+    battleEnemyPiece.classList.add(`battle-enemy-${enemy.element}`);
+  }
   textNodes.battleEnemyStats.textContent = `${locale.attack}: ${enemy.attack}`;
   textNodes.battleEnemyHp.textContent = `${locale.hp}: ${enemy.hp} / ${enemy.maxHp}`;
   textNodes.battlePlayerName.textContent = locale.battleStatusPlayer;
@@ -1088,6 +1149,8 @@ function goToSaveScreen() {
 
 function goToElementScreen(slotId) {
   currentSlotId = slotId;
+  enemyStates = createInitialEnemyStates();
+  buildGrid();
   showScreen('element');
 }
 
@@ -1203,16 +1266,21 @@ function updatePlayerPiece() {
   playerPiece.style.top = `${topPercent}%`;
 }
 
-function updateEnemyPiece() {
+function createEnemyPiece(enemy) {
+  const enemyPiece = document.createElement('div');
+  enemyPiece.className = `enemy-piece enemy-piece-${enemy.element}`;
+
   const tilePercent = 100 / GRID_SIZE;
   const tokenSizePercent = tilePercent * 0.68;
-  const leftPercent = (enemyState.x * tilePercent) + (tilePercent * 0.16);
-  const topPercent = (enemyState.y * tilePercent) + (tilePercent * 0.16);
+  const leftPercent = (enemy.x * tilePercent) + (tilePercent * 0.16);
+  const topPercent = (enemy.y * tilePercent) + (tilePercent * 0.16);
 
   enemyPiece.style.width = `${tokenSizePercent}%`;
   enemyPiece.style.height = `${tokenSizePercent}%`;
   enemyPiece.style.left = `${leftPercent}%`;
   enemyPiece.style.top = `${topPercent}%`;
+
+  return enemyPiece;
 }
 
 function buildGrid() {
@@ -1232,9 +1300,8 @@ function buildGrid() {
   }
 
   gridBoard.innerHTML = '';
-  gridBoard.append(fragment, playerPiece, enemyPiece);
+  gridBoard.append(fragment, playerPiece, ...enemyStates.map((enemy) => createEnemyPiece(enemy)));
   updatePlayerPiece();
-  updateEnemyPiece();
 }
 
 function getNeighbors(node) {
@@ -1312,12 +1379,12 @@ function moveToTile(targetX, targetY) {
 }
 
 
-function isOrthogonallyAdjacentToEnemy() {
-  const distance = Math.abs(playerState.tileX - enemyState.x) + Math.abs(playerState.tileY - enemyState.y);
+function isOrthogonallyAdjacentToEnemy(enemy) {
+  const distance = Math.abs(playerState.tileX - enemy.x) + Math.abs(playerState.tileY - enemy.y);
   return distance === 1;
 }
 
-function enterBattleMode() {
+function enterBattleMode(enemy) {
   const slot = currentSlotId ? getSlotById(currentSlotId) : null;
 
   if (!slot || !slot.class || !slot.element) {
@@ -1325,7 +1392,8 @@ function enterBattleMode() {
   }
 
   battleState.menu = BATTLE_MENUS.ROOT;
-  battleState.enemy = createEnemyForBattle();
+  battleState.enemyId = enemy.id;
+  battleState.enemy = createEnemyForBattle(enemy);
   battleState.player = createPlayerBattleData(slot);
   battleState.feedbackKeys = [];
 
@@ -1334,20 +1402,23 @@ function enterBattleMode() {
 }
 
 function tryInteractWithEnemy(tileX, tileY) {
-  if (!isEnemyTile(tileX, tileY)) {
+  const enemy = getEnemyAtTile(tileX, tileY);
+
+  if (!enemy) {
     return false;
   }
 
-  if (!isOrthogonallyAdjacentToEnemy()) {
+  if (!isOrthogonallyAdjacentToEnemy(enemy)) {
     return true;
   }
 
-  enterBattleMode();
+  enterBattleMode(enemy);
   return true;
 }
 
 function runFromBattle() {
   battleState.menu = BATTLE_MENUS.ROOT;
+  battleState.enemyId = null;
   battleState.enemy = null;
   battleState.player = null;
   battleState.feedbackKeys = [];
@@ -1387,6 +1458,7 @@ function handleBattleAction(action) {
 
 function clearBattleState() {
   battleState.menu = BATTLE_MENUS.ROOT;
+  battleState.enemyId = null;
   battleState.enemy = null;
   battleState.player = null;
   battleState.feedbackKeys = [];
@@ -1532,6 +1604,8 @@ saveSlotsList.addEventListener('click', (event) => {
   }
 
   currentSlotId = slotId;
+  enemyStates = createInitialEnemyStates();
+  buildGrid();
   const savedPos = normalizePosition(slot.playerData);
   setPlayerPosition(savedPos.x, savedPos.y);
   goToGameScreen();

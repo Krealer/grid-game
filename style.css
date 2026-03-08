@@ -179,8 +179,16 @@ h1 {
   background: #ffffff;
 }
 
-.enemy-piece {
+.enemy-piece-fire {
   background: #ff3b30;
+}
+
+.enemy-piece-earth {
+  background: #34c759;
+}
+
+.enemy-piece-water {
+  background: #0a84ff;
 }
 
 .battle-card {
@@ -273,8 +281,16 @@ h1 {
   background: #ffffff;
 }
 
-.battle-enemy {
+.battle-enemy-fire {
   background: #ff3b30;
+}
+
+.battle-enemy-earth {
+  background: #34c759;
+}
+
+.battle-enemy-water {
+  background: #0a84ff;
 }
 
 .battle-options {
