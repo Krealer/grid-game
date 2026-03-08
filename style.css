@@ -160,6 +160,23 @@ h1 {
   position: relative;
 }
 
+.tile-coordinate-label {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 0.62rem;
+  line-height: 1;
+  font-weight: 700;
+  color: #e9eefb;
+  text-shadow: 0 0 2px #000000;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.grid-board.show-coordinates .tile-coordinate-label {
+  opacity: 0.95;
+}
+
 .tile-ground {
   background: var(--ground);
 }
@@ -174,6 +191,7 @@ h1 {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
+  z-index: 2;
 }
 
 .player-piece {
@@ -594,7 +612,8 @@ html[dir='rtl'] .dialogue-stage {
 html[dir='rtl'] #menu-back,
 html[dir='rtl'] #save-back,
 html[dir='rtl'] #element-back,
-html[dir='rtl'] #class-back {
+html[dir='rtl'] #class-back,
+html[dir='rtl'] #settings-back {
   margin: 0 0 0.9rem auto;
 }
 
@@ -616,6 +635,12 @@ html[dir='rtl'] #class-back {
 
   .grid-board {
     width: min(90vw, 360px);
+  }
+
+  .tile-coordinate-label {
+    font-size: 0.48rem;
+    top: 3px;
+    left: 3px;
   }
 
   .battle-piece {
@@ -645,6 +670,10 @@ html[dir='rtl'] #class-back {
 
   .grid-board {
     width: min(70vw, 460px);
+  }
+
+  .tile-coordinate-label {
+    font-size: 0.64rem;
   }
 
   
