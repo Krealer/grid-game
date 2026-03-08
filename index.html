@@ -5,10 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Grid Dash</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
-  <main class="game-shell">
+  <section class="language-screen" aria-labelledby="language-title" aria-describedby="language-instruction">
+    <div class="language-card" role="group" aria-label="Language selection options">
+      <h1 id="language-title">Welcome to Grid Dash</h1>
+      <p id="language-instruction">Please choose your language to continue.</p>
+
+      <div class="language-options">
+        <button type="button" class="language-option" data-language="en" lang="en">English</button>
+        <button type="button" class="language-option" data-language="ja" lang="ja">日本語</button>
+        <button type="button" class="language-option" data-language="ru" lang="ru">Русский</button>
+        <button type="button" class="language-option" data-language="ar" lang="ar" dir="rtl">العربية</button>
+      </div>
+
+      <p class="language-status" id="language-status" aria-live="polite">No language selected yet.</p>
+    </div>
+  </section>
+
+  <main class="game-shell" hidden>
     <header class="hud" aria-live="polite">
       <h1>Grid Dash</h1>
       <p class="hud__meta">
