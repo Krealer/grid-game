@@ -168,11 +168,55 @@ h1 {
   background: var(--wall);
 }
 
-.player-piece {
+.player-piece,
+.enemy-piece {
   position: absolute;
   border-radius: 50%;
-  background: #ffffff;
   pointer-events: none;
+}
+
+.player-piece {
+  background: #ffffff;
+}
+
+.enemy-piece {
+  background: #ff3b30;
+}
+
+.battle-card {
+  background: #000000;
+  border-color: #242424;
+}
+
+.battle-arena {
+  margin-top: 1rem;
+  min-height: 180px;
+  border: 1px solid #242424;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.battle-piece {
+  width: min(28vw, 120px);
+  height: min(28vw, 120px);
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.battle-player {
+  background: #ffffff;
+}
+
+.battle-enemy {
+  background: #ff3b30;
+}
+
+.battle-options {
+  margin-top: 1rem;
 }
 
 html[dir='rtl'] .card {
@@ -205,7 +249,13 @@ html[dir='rtl'] #class-back {
   .grid-board {
     width: min(90vw, 360px);
   }
+
+  .battle-piece {
+    width: min(34vw, 112px);
+    height: min(34vw, 112px);
+  }
 }
+
 
 @media (min-width: 768px) {
   .language-options,
@@ -224,4 +274,15 @@ html[dir='rtl'] #class-back {
   .grid-board {
     width: min(70vw, 460px);
   }
+
+  .battle-arena {
+    min-height: 220px;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .battle-piece {
+    width: min(20vw, 150px);
+    height: min(20vw, 150px);
+  }
 }
+
