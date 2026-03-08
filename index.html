@@ -82,6 +82,22 @@
         <div class="battle-status">
           <p id="battle-enemy-name" class="battle-text"></p>
           <p id="battle-enemy-stats" class="battle-text battle-text-muted"></p>
+          <div class="hp-block">
+            <p id="battle-enemy-hp" class="battle-text hp-label"></p>
+            <div class="hp-bar-track" aria-hidden="true">
+              <div id="battle-enemy-hp-fill" class="hp-bar-fill"></div>
+            </div>
+          </div>
+        </div>
+        <div class="battle-status battle-status-player">
+          <p id="battle-player-name" class="battle-text"></p>
+          <p id="battle-player-stats" class="battle-text battle-text-muted"></p>
+          <div class="hp-block">
+            <p id="battle-player-hp" class="battle-text hp-label"></p>
+            <div class="hp-bar-track" aria-hidden="true">
+              <div id="battle-player-hp-fill" class="hp-bar-fill"></div>
+            </div>
+          </div>
         </div>
         <div class="battle-arena" aria-label="Battle arena">
           <div class="battle-piece battle-player" aria-label="Player"></div>
@@ -89,6 +105,21 @@
         </div>
         <p id="battle-subtitle" class="subtitle battle-subtitle"></p>
         <ul class="menu-options battle-options" id="battle-options-list"></ul>
+      </div>
+    </section>
+
+    <section id="victory-screen" class="screen" hidden aria-labelledby="victory-title">
+      <div class="card">
+        <h1 id="victory-title"></h1>
+        <p id="victory-message" class="subtitle"></p>
+        <button type="button" class="menu-option" id="victory-continue"></button>
+      </div>
+    </section>
+
+    <section id="defeat-screen" class="screen" hidden aria-labelledby="defeat-title">
+      <div class="card">
+        <h1 id="defeat-title"></h1>
+        <button type="button" class="menu-option" id="defeat-main-menu"></button>
       </div>
     </section>
 
