@@ -2,6 +2,8 @@ const GRID_SIZE = 12;
 const TILE_SPEED_PER_SECOND = 2;
 const TILE_STEP_DURATION = 1 / TILE_SPEED_PER_SECOND;
 
+const ENEMY_START = { x: 3, y: 0 };
+
 const MAP_LAYOUT = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   [0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0],
@@ -24,6 +26,7 @@ const screens = {
   element: document.getElementById('element-screen'),
   class: document.getElementById('class-screen'),
   game: document.getElementById('game-screen'),
+  battle: document.getElementById('battle-screen'),
   gameMenu: document.getElementById('game-menu-screen'),
   inventory: document.getElementById('inventory-screen'),
   info: document.getElementById('info-screen')
@@ -53,6 +56,9 @@ const textNodes = {
   gameSlot: document.getElementById('game-slot'),
   gameHelper: document.getElementById('game-helper'),
   openGameMenu: document.getElementById('open-game-menu'),
+  battleTitle: document.getElementById('battle-title'),
+  battleFight: document.getElementById('battle-fight'),
+  battleRun: document.getElementById('battle-run'),
   gameMenuTitle: document.getElementById('game-menu-title'),
   gameMenuStatus: document.getElementById('game-menu-status'),
   gmBackToGame: document.getElementById('gm-back-to-game'),
@@ -91,9 +97,13 @@ const playerState = {
   lastTimestamp: null
 };
 
+const enemyState = createInitialEnemyState();
+
 const playerPiece = document.createElement('div');
 playerPiece.className = 'player-piece';
-gridBoard.append(playerPiece);
+const enemyPiece = document.createElement('div');
+enemyPiece.className = 'enemy-piece';
+gridBoard.append(playerPiece, enemyPiece);
 
 const translations = {
   en: {
@@ -116,8 +126,11 @@ const translations = {
     mage: 'Mage',
     classSaved: 'Selection saved for Slot {number}.',
     gameplayTitle: 'Grid Movement',
-    gameplayHelper: 'Tap or click a reachable gray tile to move.',
+    gameplayHelper: 'Tap or click a reachable gray tile to move. Tap the red enemy while next to it to battle.',
     gameplaySlot: 'Slot {number}: {element} • {className}',
+    battleTitle: 'Battle',
+    fight: 'Fight',
+    run: 'Run',
     gameMenu: 'Game Menu',
     backToGame: 'Back to Game',
     inventory: 'Inventory',
@@ -159,6 +172,9 @@ const translations = {
     gameplayTitle: 'グリッド移動',
     gameplayHelper: '到達できる灰色タイルをタップまたはクリックして移動します。',
     gameplaySlot: 'スロット {number}: {element} • {className}',
+    battleTitle: 'バトル',
+    fight: 'たたかう',
+    run: 'にげる',
     gameMenu: 'ゲームメニュー',
     backToGame: 'ゲームに戻る',
     inventory: 'インベントリ',
@@ -200,6 +216,9 @@ const translations = {
     gameplayTitle: 'Движение по сетке',
     gameplayHelper: 'Нажмите на достижимую серую клетку, чтобы переместиться.',
     gameplaySlot: 'Слот {number}: {element} • {className}',
+    battleTitle: 'Бой',
+    fight: 'Биться',
+    run: 'Бежать',
     gameMenu: 'Меню игры',
     backToGame: 'Вернуться в игру',
     inventory: 'Инвентарь',
@@ -239,8 +258,11 @@ const translations = {
     mage: 'ساحر',
     classSaved: 'تم حفظ الاختيار في الخانة {number}.',
     gameplayTitle: 'الحركة على الشبكة',
-    gameplayHelper: 'انقر أو المس مربّعًا رماديًا يمكن الوصول إليه للتحرك.',
+    gameplayHelper: 'انقر أو المس مربّعًا رماديًا يمكن الوصول إليه للتحرك. المس العدو الأحمر المجاور لبدء المعركة.',
     gameplaySlot: 'الخانة {number}: {element} • {className}',
+    battleTitle: 'معركة',
+    fight: 'قتال',
+    run: 'هرب',
     gameMenu: 'قائمة اللعبة',
     backToGame: 'العودة إلى اللعبة',
     inventory: 'المخزون',
@@ -276,6 +298,30 @@ function isInsideGrid(x, y) {
 
 function isGround(x, y) {
   return isInsideGrid(x, y) && MAP_LAYOUT[y][x] === 0;
+}
+
+function createInitialEnemyState() {
+  if (isGround(ENEMY_START.x, ENEMY_START.y) && !(ENEMY_START.x === 0 && ENEMY_START.y === 0)) {
+    return { x: ENEMY_START.x, y: ENEMY_START.y };
+  }
+
+  for (let y = 0; y < GRID_SIZE; y += 1) {
+    for (let x = 0; x < GRID_SIZE; x += 1) {
+      if (isGround(x, y) && !(x === 0 && y === 0)) {
+        return { x, y };
+      }
+    }
+  }
+
+  return { x: 1, y: 0 };
+}
+
+function isEnemyTile(x, y) {
+  return enemyState.x === x && enemyState.y === y;
+}
+
+function isWalkable(x, y) {
+  return isGround(x, y) && !isEnemyTile(x, y);
 }
 
 function getDefaultSlots() {
@@ -426,6 +472,9 @@ function renderStaticText() {
   textNodes.classBack.textContent = locale.back;
 
   textNodes.openGameMenu.textContent = locale.gameMenu;
+  textNodes.battleTitle.textContent = locale.battleTitle;
+  textNodes.battleFight.textContent = locale.fight;
+  textNodes.battleRun.textContent = locale.run;
   textNodes.gameMenuTitle.textContent = locale.gameMenu;
   textNodes.gmBackToGame.textContent = locale.backToGame;
   textNodes.gmInventory.textContent = locale.inventory;
@@ -650,6 +699,18 @@ function updatePlayerPiece() {
   playerPiece.style.top = `${topPercent}%`;
 }
 
+function updateEnemyPiece() {
+  const tilePercent = 100 / GRID_SIZE;
+  const tokenSizePercent = tilePercent * 0.68;
+  const leftPercent = (enemyState.x * tilePercent) + (tilePercent * 0.16);
+  const topPercent = (enemyState.y * tilePercent) + (tilePercent * 0.16);
+
+  enemyPiece.style.width = `${tokenSizePercent}%`;
+  enemyPiece.style.height = `${tokenSizePercent}%`;
+  enemyPiece.style.left = `${leftPercent}%`;
+  enemyPiece.style.top = `${topPercent}%`;
+}
+
 function buildGrid() {
   const fragment = document.createDocumentFragment();
 
@@ -667,8 +728,9 @@ function buildGrid() {
   }
 
   gridBoard.innerHTML = '';
-  gridBoard.append(fragment, playerPiece);
+  gridBoard.append(fragment, playerPiece, enemyPiece);
   updatePlayerPiece();
+  updateEnemyPiece();
 }
 
 function getNeighbors(node) {
@@ -681,7 +743,7 @@ function getNeighbors(node) {
 
   return directions
     .map((dir) => ({ x: node.x + dir.x, y: node.y + dir.y }))
-    .filter((point) => isGround(point.x, point.y));
+    .filter((point) => isWalkable(point.x, point.y));
 }
 
 function findPath(start, end) {
@@ -721,7 +783,7 @@ function findPath(start, end) {
 }
 
 function moveToTile(targetX, targetY) {
-  if (!isGround(targetX, targetY)) {
+  if (!isWalkable(targetX, targetY)) {
     return;
   }
 
@@ -743,6 +805,33 @@ function moveToTile(targetX, targetY) {
   playerState.lastTimestamp = null;
   beginNextStep();
   updatePlayerPiece();
+}
+
+
+function isOrthogonallyAdjacentToEnemy() {
+  const distance = Math.abs(playerState.tileX - enemyState.x) + Math.abs(playerState.tileY - enemyState.y);
+  return distance === 1;
+}
+
+function enterBattleMode() {
+  showScreen('battle');
+}
+
+function tryInteractWithEnemy(tileX, tileY) {
+  if (!isEnemyTile(tileX, tileY)) {
+    return false;
+  }
+
+  if (!isOrthogonallyAdjacentToEnemy()) {
+    return true;
+  }
+
+  enterBattleMode();
+  return true;
+}
+
+function runFromBattle() {
+  goToGameScreen();
 }
 
 function animationStep(timestamp) {
@@ -779,6 +868,10 @@ gridBoard.addEventListener('click', (event) => {
   const x = Number(tile.dataset.x);
   const y = Number(tile.dataset.y);
   if (!Number.isInteger(x) || !Number.isInteger(y)) {
+    return;
+  }
+
+  if (tryInteractWithEnemy(x, y)) {
     return;
   }
 
@@ -835,6 +928,8 @@ textNodes.gmSaveQuit.addEventListener('click', handleSaveAndQuit);
 textNodes.gmQuit.addEventListener('click', handleQuitWithoutSaving);
 textNodes.inventoryBack.addEventListener('click', returnToGameMenu);
 textNodes.infoBack.addEventListener('click', returnToGameMenu);
+textNodes.battleRun.addEventListener('click', runFromBattle);
+textNodes.battleFight.addEventListener('click', () => {});
 
 saveSlotsList.addEventListener('click', (event) => {
   const button = event.target.closest('.save-slot');
