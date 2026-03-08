@@ -42,3 +42,17 @@
 
 ## 7. File Purpose
 - This file is a permanent instruction document for future development.
+
+## 8. Multilingual Support Requirements
+- English is the default development language.
+- Translations are mandatory, not optional, for all user-facing text.
+- Any user-facing text added to the project must include translations for all supported languages.
+- The currently supported languages are:
+  - English
+  - Japanese
+  - Russian
+  - Arabic
+- Codex must not introduce new UI text without providing translated equivalents.
+- Translation keys or structures must be organized so additional languages can be added later.
+- Language selection must consistently affect all visible interface text.
+- Arabic text must support right-to-left rendering when appropriate.
