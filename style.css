@@ -273,23 +273,197 @@ h1 {
 .battle-piece {
   width: min(28vw, 120px);
   height: min(28vw, 120px);
-  border-radius: 50%;
   flex: 0 0 auto;
+  position: relative;
 }
 
 .battle-player {
+  display: grid;
+  place-items: end center;
+}
+
+.battle-player-body {
+  position: relative;
+  width: 62%;
+  height: 92%;
+}
+
+.battle-player-head {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 30%;
+  height: 18%;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+
+.battle-player-torso {
+  position: absolute;
+  top: 19%;
+  left: 50%;
+  width: 0;
+  height: 33%;
+  border-left: 3px solid #ffffff;
+  transform: translateX(-50%);
+}
+
+.battle-player-arm,
+.battle-player-leg {
+  position: absolute;
+  width: 0;
+  border-left: 3px solid #ffffff;
+  transform-origin: top center;
+}
+
+.battle-player-arm {
+  top: 28%;
+  height: 28%;
+}
+
+.battle-player-arm-left {
+  left: 47%;
+  transform: rotate(44deg);
+}
+
+.battle-player-arm-right {
+  left: 53%;
+  transform: rotate(-48deg);
+}
+
+.battle-player-leg {
+  top: 50%;
+  height: 36%;
+}
+
+.battle-player-leg-left {
+  left: 49%;
+  transform: rotate(28deg);
+}
+
+.battle-player-leg-right {
+  left: 51%;
+  transform: rotate(-24deg);
+}
+
+.battle-player-armour,
+.battle-player-hat,
+.battle-player-weapon {
+  position: absolute;
+}
+
+.battle-player-warrior .battle-player-armour {
+  top: 22%;
+  left: 50%;
+  width: 34%;
+  height: 20%;
+  border: 3px solid #ffffff;
+  border-radius: 4px;
+  transform: translateX(-50%);
+}
+
+.battle-player-warrior .battle-player-hat {
+  display: none;
+}
+
+.battle-player-warrior .battle-player-weapon {
+  top: 26%;
+  left: 66%;
+  width: 3px;
+  height: 42%;
+  background: #ffffff;
+  transform: rotate(-34deg);
+  transform-origin: top center;
+}
+
+.battle-player-warrior .battle-player-weapon::before {
+  content: '';
+  position: absolute;
+  top: -10%;
+  left: -150%;
+  width: 400%;
+  height: 3px;
   background: #ffffff;
 }
 
-.battle-enemy-fire {
+.battle-player-mage .battle-player-armour {
+  display: none;
+}
+
+.battle-player-mage .battle-player-hat {
+  top: -4%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 26px solid #ffffff;
+  transform: translateX(-50%);
+}
+
+.battle-player-mage .battle-player-weapon {
+  top: 20%;
+  left: 32%;
+  width: 3px;
+  height: 56%;
+  background: #ffffff;
+  transform: rotate(14deg);
+  transform-origin: top center;
+}
+
+.battle-player-mage .battle-player-weapon::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+
+.battle-enemy {
+  display: grid;
+  place-items: end center;
+}
+
+.battle-slime-body {
+  width: 100%;
+  height: 76%;
+  border-radius: 999px 999px 14px 14px;
+  border: 3px solid #ffffff;
+  border-bottom-width: 0;
+  position: relative;
+}
+
+.battle-slime-eye {
+  position: absolute;
+  top: 42%;
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  border-radius: 50%;
+}
+
+.battle-slime-eye-left {
+  left: 34%;
+}
+
+.battle-slime-eye-right {
+  right: 34%;
+}
+
+.battle-enemy-fire .battle-slime-body {
   background: #ff3b30;
 }
 
-.battle-enemy-earth {
+.battle-enemy-earth .battle-slime-body {
   background: #34c759;
 }
 
-.battle-enemy-water {
+.battle-enemy-water .battle-slime-body {
   background: #0a84ff;
 }
 

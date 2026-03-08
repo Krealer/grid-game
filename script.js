@@ -924,6 +924,11 @@ function renderBattleUI() {
     if (battleEnemyPiece) {
       battleEnemyPiece.classList.remove('battle-enemy-fire', 'battle-enemy-earth', 'battle-enemy-water');
     }
+
+    const battlePlayerPiece = document.querySelector('.battle-player');
+    if (battlePlayerPiece) {
+      battlePlayerPiece.classList.remove('battle-player-warrior', 'battle-player-mage');
+    }
     return;
   }
 
@@ -933,6 +938,12 @@ function renderBattleUI() {
   if (battleEnemyPiece) {
     battleEnemyPiece.classList.remove('battle-enemy-fire', 'battle-enemy-earth', 'battle-enemy-water');
     battleEnemyPiece.classList.add(`battle-enemy-${enemy.element}`);
+  }
+
+  const battlePlayerPiece = document.querySelector('.battle-player');
+  if (battlePlayerPiece) {
+    battlePlayerPiece.classList.remove('battle-player-warrior', 'battle-player-mage');
+    battlePlayerPiece.classList.add(`battle-player-${player.class}`);
   }
   textNodes.battleEnemyStats.textContent = `${locale.attack}: ${enemy.attack}`;
   textNodes.battleEnemyHp.textContent = `${locale.hp}: ${enemy.hp} / ${enemy.maxHp}`;
