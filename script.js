@@ -22,7 +22,10 @@ const screens = {
   save: document.getElementById('save-screen'),
   element: document.getElementById('element-screen'),
   class: document.getElementById('class-screen'),
-  game: document.getElementById('game-screen')
+  game: document.getElementById('game-screen'),
+  gameMenu: document.getElementById('game-menu-screen'),
+  inventory: document.getElementById('inventory-screen'),
+  info: document.getElementById('info-screen')
 };
 
 const languageButtons = [...document.querySelectorAll('.language-option')];
@@ -36,9 +39,6 @@ const textNodes = {
   menuTitle: document.getElementById('menu-title'),
   menuInstruction: document.getElementById('menu-instruction'),
   menuPlay: document.getElementById('menu-play'),
-  menuOptions: document.getElementById('menu-options'),
-  menuMedals: document.getElementById('menu-medals'),
-  menuCredits: document.getElementById('menu-credits'),
   menuBack: document.getElementById('menu-back'),
   saveTitle: document.getElementById('save-title'),
   saveSubtitle: document.getElementById('save-subtitle'),
@@ -50,7 +50,23 @@ const textNodes = {
   classConfirmation: document.getElementById('class-confirmation'),
   gameTitle: document.getElementById('game-title'),
   gameSlot: document.getElementById('game-slot'),
-  gameHelper: document.getElementById('game-helper')
+  gameHelper: document.getElementById('game-helper'),
+  openGameMenu: document.getElementById('open-game-menu'),
+  gameMenuTitle: document.getElementById('game-menu-title'),
+  gameMenuStatus: document.getElementById('game-menu-status'),
+  gmBackToGame: document.getElementById('gm-back-to-game'),
+  gmInventory: document.getElementById('gm-inventory'),
+  gmInfo: document.getElementById('gm-info'),
+  gmSave: document.getElementById('gm-save'),
+  gmSaveQuit: document.getElementById('gm-save-quit'),
+  gmQuit: document.getElementById('gm-quit'),
+  inventoryTitle: document.getElementById('inventory-title'),
+  inventoryHelper: document.getElementById('inventory-helper'),
+  inventoryBack: document.getElementById('inventory-back'),
+  infoTitle: document.getElementById('info-title'),
+  infoHelper: document.getElementById('info-helper'),
+  infoDetails: document.getElementById('info-details'),
+  infoBack: document.getElementById('info-back')
 };
 
 const saveSlotsList = document.getElementById('save-slots');
@@ -61,6 +77,7 @@ const SLOT_COUNT = 3;
 
 let currentLanguage = 'en';
 let currentSlotId = null;
+let gameMenuStatusKey = '';
 
 const playerState = {
   tileX: 0,
@@ -83,9 +100,6 @@ const translations = {
     menuTitle: 'Main Menu',
     menuInstruction: 'Select an option.',
     play: 'Play',
-    options: 'Options',
-    medals: 'Medals',
-    credits: 'Credits',
     back: 'Back',
     saveTitle: 'Save Slots',
     saveSubtitle: 'Choose a save slot.',
@@ -102,6 +116,23 @@ const translations = {
     gameplayTitle: 'Grid Movement',
     gameplayHelper: 'Tap or click a reachable gray tile to move.',
     gameplaySlot: 'Slot {number}: {element} • {className}',
+    gameMenu: 'Game Menu',
+    backToGame: 'Back to Game',
+    inventory: 'Inventory',
+    info: 'Info',
+    save: 'Save',
+    saveQuit: 'Save & Quit',
+    quit: 'Quit',
+    inventoryTitle: 'Inventory',
+    inventoryPlaceholder: 'Inventory screen placeholder.',
+    infoTitle: 'Info',
+    infoPlaceholder: 'Current character and slot information.',
+    saved: 'Saved.',
+    infoSlot: 'Slot: {slot}',
+    infoElement: 'Element: {element}',
+    infoClass: 'Class: {className}',
+    infoCoordinates: 'Coordinates: ({x}, {y})',
+    infoNone: 'None',
     dir: 'ltr'
   },
   ja: {
@@ -110,9 +141,6 @@ const translations = {
     menuTitle: 'メインメニュー',
     menuInstruction: '項目を選んでください。',
     play: 'プレイ',
-    options: 'オプション',
-    medals: 'メダル',
-    credits: 'クレジット',
     back: '戻る',
     saveTitle: 'セーブスロット',
     saveSubtitle: 'セーブスロットを選んでください。',
@@ -129,6 +157,23 @@ const translations = {
     gameplayTitle: 'グリッド移動',
     gameplayHelper: '到達できる灰色タイルをタップまたはクリックして移動します。',
     gameplaySlot: 'スロット {number}: {element} • {className}',
+    gameMenu: 'ゲームメニュー',
+    backToGame: 'ゲームに戻る',
+    inventory: 'インベントリ',
+    info: '情報',
+    save: 'セーブ',
+    saveQuit: 'セーブして終了',
+    quit: '終了',
+    inventoryTitle: 'インベントリ',
+    inventoryPlaceholder: 'インベントリ画面のプレースホルダーです。',
+    infoTitle: '情報',
+    infoPlaceholder: '現在のキャラクター情報とスロット情報です。',
+    saved: '保存しました。',
+    infoSlot: 'スロット: {slot}',
+    infoElement: '属性: {element}',
+    infoClass: 'クラス: {className}',
+    infoCoordinates: '座標: ({x}, {y})',
+    infoNone: 'なし',
     dir: 'ltr'
   },
   ru: {
@@ -137,9 +182,6 @@ const translations = {
     menuTitle: 'Главное меню',
     menuInstruction: 'Выберите пункт.',
     play: 'Играть',
-    options: 'Опции',
-    medals: 'Медали',
-    credits: 'Титры',
     back: 'Назад',
     saveTitle: 'Слоты сохранения',
     saveSubtitle: 'Выберите слот сохранения.',
@@ -156,6 +198,23 @@ const translations = {
     gameplayTitle: 'Движение по сетке',
     gameplayHelper: 'Нажмите на достижимую серую клетку, чтобы переместиться.',
     gameplaySlot: 'Слот {number}: {element} • {className}',
+    gameMenu: 'Меню игры',
+    backToGame: 'Вернуться в игру',
+    inventory: 'Инвентарь',
+    info: 'Инфо',
+    save: 'Сохранить',
+    saveQuit: 'Сохранить и выйти',
+    quit: 'Выйти',
+    inventoryTitle: 'Инвентарь',
+    inventoryPlaceholder: 'Экран инвентаря (заглушка).',
+    infoTitle: 'Инфо',
+    infoPlaceholder: 'Текущая информация о персонаже и слоте.',
+    saved: 'Сохранено.',
+    infoSlot: 'Слот: {slot}',
+    infoElement: 'Элемент: {element}',
+    infoClass: 'Класс: {className}',
+    infoCoordinates: 'Координаты: ({x}, {y})',
+    infoNone: 'Нет',
     dir: 'ltr'
   },
   ar: {
@@ -164,9 +223,6 @@ const translations = {
     menuTitle: 'القائمة الرئيسية',
     menuInstruction: 'اختر خيارًا.',
     play: 'لعب',
-    options: 'خيارات',
-    medals: 'ميداليات',
-    credits: 'اعتمادات',
     back: 'رجوع',
     saveTitle: 'خانات الحفظ',
     saveSubtitle: 'اختر خانة حفظ.',
@@ -183,6 +239,23 @@ const translations = {
     gameplayTitle: 'الحركة على الشبكة',
     gameplayHelper: 'انقر أو المس مربّعًا رماديًا يمكن الوصول إليه للتحرك.',
     gameplaySlot: 'الخانة {number}: {element} • {className}',
+    gameMenu: 'قائمة اللعبة',
+    backToGame: 'العودة إلى اللعبة',
+    inventory: 'المخزون',
+    info: 'معلومات',
+    save: 'حفظ',
+    saveQuit: 'حفظ وإنهاء',
+    quit: 'إنهاء',
+    inventoryTitle: 'المخزون',
+    inventoryPlaceholder: 'هذه شاشة المخزون التجريبية.',
+    infoTitle: 'معلومات',
+    infoPlaceholder: 'معلومات الشخصية الحالية والخانة.',
+    saved: 'تم الحفظ.',
+    infoSlot: 'الخانة: {slot}',
+    infoElement: 'العنصر: {element}',
+    infoClass: 'الفئة: {className}',
+    infoCoordinates: 'الإحداثيات: ({x}, {y})',
+    infoNone: 'لا يوجد',
     dir: 'rtl'
   }
 };
@@ -208,8 +281,22 @@ function getDefaultSlots() {
     slotId: index + 1,
     element: null,
     class: null,
-    playerData: {}
+    playerData: {
+      x: 0,
+      y: 0
+    }
   }));
+}
+
+function normalizePosition(playerData) {
+  const x = Number.isInteger(playerData?.x) ? playerData.x : 0;
+  const y = Number.isInteger(playerData?.y) ? playerData.y : 0;
+
+  if (!isGround(x, y)) {
+    return { x: 0, y: 0 };
+  }
+
+  return { x, y };
 }
 
 function loadSlots() {
@@ -230,7 +317,7 @@ function loadSlots() {
       slotId: index + 1,
       element: typeof slot.element === 'string' ? slot.element : null,
       class: typeof slot.class === 'string' ? slot.class : null,
-      playerData: slot.playerData && typeof slot.playerData === 'object' ? slot.playerData : {}
+      playerData: normalizePosition(slot.playerData)
     }));
   } catch (_error) {
     return getDefaultSlots();
@@ -256,10 +343,10 @@ function updateSlot(slotId, data) {
   slots[slotIndex] = {
     ...slots[slotIndex],
     ...data,
-    playerData: {
+    playerData: normalizePosition({
       ...slots[slotIndex].playerData,
       ...(data.playerData || {})
-    }
+    })
   };
 
   saveSlots(slots);
@@ -269,6 +356,13 @@ function setDocumentLanguage() {
   const locale = getLocale();
   document.documentElement.lang = currentLanguage;
   document.documentElement.dir = locale.dir;
+}
+
+function getCurrentTilePosition() {
+  return {
+    x: playerState.tileX,
+    y: playerState.tileY
+  };
 }
 
 function renderGameplayInfo() {
@@ -288,29 +382,61 @@ function renderGameplayInfo() {
   }
 }
 
+function renderInfoDetails() {
+  const locale = getLocale();
+  const slot = currentSlotId ? getSlotById(currentSlotId) : null;
+  const currentPos = getCurrentTilePosition();
+
+  if (!slot) {
+    textNodes.infoDetails.textContent = '';
+    return;
+  }
+
+  const lines = [
+    formatText(locale.infoSlot, { slot: slot.slotId }),
+    formatText(locale.infoElement, { element: slot.element ? locale[slot.element] : locale.infoNone }),
+    formatText(locale.infoClass, { className: slot.class ? locale[slot.class] : locale.infoNone }),
+    formatText(locale.infoCoordinates, { x: currentPos.x, y: currentPos.y })
+  ];
+
+  textNodes.infoDetails.textContent = lines.join('\n');
+}
+
 function renderStaticText() {
   const locale = getLocale();
 
   textNodes.languageTitle.textContent = locale.languageTitle;
   textNodes.languageSubtitle.textContent = locale.languageSubtitle;
-
   textNodes.menuTitle.textContent = locale.menuTitle;
   textNodes.menuInstruction.textContent = locale.menuInstruction;
   textNodes.menuPlay.textContent = locale.play;
-  textNodes.menuOptions.textContent = locale.options;
-  textNodes.menuMedals.textContent = locale.medals;
-  textNodes.menuCredits.textContent = locale.credits;
   textNodes.menuBack.textContent = locale.back;
-
   textNodes.saveTitle.textContent = locale.saveTitle;
   textNodes.saveSubtitle.textContent = locale.saveSubtitle;
   textNodes.saveBack.textContent = locale.back;
-
   textNodes.elementTitle.textContent = locale.elementQuestion;
   textNodes.elementBack.textContent = locale.back;
-
   textNodes.classTitle.textContent = locale.classQuestion;
   textNodes.classBack.textContent = locale.back;
+
+  textNodes.openGameMenu.textContent = locale.gameMenu;
+  textNodes.gameMenuTitle.textContent = locale.gameMenu;
+  textNodes.gmBackToGame.textContent = locale.backToGame;
+  textNodes.gmInventory.textContent = locale.inventory;
+  textNodes.gmInfo.textContent = locale.info;
+  textNodes.gmSave.textContent = locale.save;
+  textNodes.gmSaveQuit.textContent = locale.saveQuit;
+  textNodes.gmQuit.textContent = locale.quit;
+
+  textNodes.inventoryTitle.textContent = locale.inventoryTitle;
+  textNodes.inventoryHelper.textContent = locale.inventoryPlaceholder;
+  textNodes.inventoryBack.textContent = locale.back;
+
+  textNodes.infoTitle.textContent = locale.infoTitle;
+  textNodes.infoHelper.textContent = locale.infoPlaceholder;
+  textNodes.infoBack.textContent = locale.back;
+
+  textNodes.gameMenuStatus.textContent = gameMenuStatusKey ? locale[gameMenuStatusKey] : '';
 
   elementButtons.forEach((button) => {
     button.textContent = locale[button.dataset.element];
@@ -323,6 +449,7 @@ function renderStaticText() {
   renderSaveSlots();
   renderClassConfirmation();
   renderGameplayInfo();
+  renderInfoDetails();
 }
 
 function renderSaveSlots() {
@@ -386,10 +513,12 @@ function setLanguage(language) {
 
 function goToLanguageScreen() {
   currentSlotId = null;
+  gameMenuStatusKey = '';
   showScreen('language');
 }
 
 function goToMenuScreen() {
+  gameMenuStatusKey = '';
   showScreen('menu');
 }
 
@@ -408,11 +537,11 @@ function goToClassScreen() {
   showScreen('class');
 }
 
-function resetPlayerPosition() {
-  playerState.tileX = 0;
-  playerState.tileY = 0;
-  playerState.renderX = 0;
-  playerState.renderY = 0;
+function setPlayerPosition(x, y) {
+  playerState.tileX = x;
+  playerState.tileY = y;
+  playerState.renderX = x;
+  playerState.renderY = y;
   playerState.path = [];
   playerState.moving = false;
   playerState.lastTimestamp = null;
@@ -420,9 +549,70 @@ function resetPlayerPosition() {
 }
 
 function goToGameScreen() {
-  resetPlayerPosition();
   renderGameplayInfo();
   showScreen('game');
+}
+
+function openGameMenu() {
+  gameMenuStatusKey = '';
+  textNodes.gameMenuStatus.textContent = '';
+  showScreen('gameMenu');
+}
+
+function openInventoryScreen() {
+  showScreen('inventory');
+}
+
+function openInfoScreen() {
+  renderInfoDetails();
+  showScreen('info');
+}
+
+function returnToGameMenu() {
+  renderInfoDetails();
+  showScreen('gameMenu');
+}
+
+function writeCurrentGameToSlot() {
+  if (!currentSlotId) {
+    return false;
+  }
+
+  const slot = getSlotById(currentSlotId);
+  if (!slot || !slot.element || !slot.class) {
+    return false;
+  }
+
+  const pos = getCurrentTilePosition();
+  updateSlot(currentSlotId, {
+    slotId: currentSlotId,
+    element: slot.element,
+    class: slot.class,
+    playerData: {
+      x: pos.x,
+      y: pos.y
+    }
+  });
+
+  renderSaveSlots();
+  renderInfoDetails();
+  return true;
+}
+
+function handleSaveOnly() {
+  if (writeCurrentGameToSlot()) {
+    gameMenuStatusKey = 'saved';
+    textNodes.gameMenuStatus.textContent = getLocale().saved;
+  }
+}
+
+function handleSaveAndQuit() {
+  writeCurrentGameToSlot();
+  goToMenuScreen();
+}
+
+function handleQuitWithoutSaving() {
+  goToMenuScreen();
 }
 
 function updatePlayerPiece() {
@@ -552,7 +742,7 @@ function moveToTile(targetX, targetY) {
 }
 
 function animationStep(timestamp) {
-  if (playerState.moving && playerState.path.length > 0) {
+  if (!screens.game.hidden && playerState.moving && playerState.path.length > 0) {
     const dt = playerState.lastTimestamp ? (timestamp - playerState.lastTimestamp) / 1000 : 0;
     playerState.lastTimestamp = timestamp;
 
@@ -585,21 +775,25 @@ function animationStep(timestamp) {
     }
 
     updatePlayerPiece();
+  } else if (screens.game.hidden) {
+    playerState.lastTimestamp = null;
   }
 
   requestAnimationFrame(animationStep);
 }
 
 gridBoard.addEventListener('click', (event) => {
-  const tile = event.target.closest('.grid-tile');
+  if (screens.game.hidden) {
+    return;
+  }
 
+  const tile = event.target.closest('.grid-tile');
   if (!tile) {
     return;
   }
 
   const x = Number(tile.dataset.x);
   const y = Number(tile.dataset.y);
-
   if (!Number.isInteger(x) || !Number.isInteger(y)) {
     return;
   }
@@ -624,7 +818,6 @@ document.addEventListener('keydown', (event) => {
   };
 
   const direction = keyToDirection[event.key];
-
   if (!direction) {
     return;
   }
@@ -649,10 +842,18 @@ textNodes.classBack.addEventListener('click', () => {
   textNodes.classConfirmation.textContent = '';
   showScreen('element');
 });
+textNodes.openGameMenu.addEventListener('click', openGameMenu);
+textNodes.gmBackToGame.addEventListener('click', goToGameScreen);
+textNodes.gmInventory.addEventListener('click', openInventoryScreen);
+textNodes.gmInfo.addEventListener('click', openInfoScreen);
+textNodes.gmSave.addEventListener('click', handleSaveOnly);
+textNodes.gmSaveQuit.addEventListener('click', handleSaveAndQuit);
+textNodes.gmQuit.addEventListener('click', handleQuitWithoutSaving);
+textNodes.inventoryBack.addEventListener('click', returnToGameMenu);
+textNodes.infoBack.addEventListener('click', returnToGameMenu);
 
 saveSlotsList.addEventListener('click', (event) => {
   const button = event.target.closest('.save-slot');
-
   if (!button) {
     return;
   }
@@ -663,13 +864,12 @@ saveSlotsList.addEventListener('click', (event) => {
   }
 
   const slot = getSlotById(slotId);
-
   if (!slot) {
     return;
   }
 
   if (!slot.element || !slot.class) {
-    updateSlot(slotId, { element: null, class: null });
+    updateSlot(slotId, { element: null, class: null, playerData: { x: 0, y: 0 } });
   }
 
   goToElementScreen(slotId);
@@ -681,7 +881,7 @@ elementButtons.forEach((button) => {
       return;
     }
 
-    updateSlot(currentSlotId, { element: button.dataset.element, class: null });
+    updateSlot(currentSlotId, { element: button.dataset.element, class: null, playerData: { x: 0, y: 0 } });
     goToClassScreen();
   });
 });
@@ -694,11 +894,12 @@ classButtons.forEach((button) => {
 
     updateSlot(currentSlotId, {
       class: button.dataset.class,
-      playerData: {
-        spawnX: 1,
-        spawnY: 1
-      }
+      playerData: { x: 0, y: 0 }
     });
+
+    const slot = getSlotById(currentSlotId);
+    const start = normalizePosition(slot?.playerData);
+    setPlayerPosition(start.x, start.y);
 
     renderClassConfirmation();
     renderSaveSlots();
