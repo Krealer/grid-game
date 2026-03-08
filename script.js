@@ -129,6 +129,7 @@ const BATTLE_MENUS = {
 
 const FIRE_SLIME_TEMPLATE = {
   nameKey: 'fireSlime',
+  element: 'fire',
   hp: 20,
   attack: 3,
   drops: {
@@ -149,8 +150,15 @@ const battleState = {
   menu: BATTLE_MENUS.ROOT,
   enemy: null,
   player: null,
+  feedbackKeys: [],
   resultMessageKey: 'obtainedNothing',
   resultItemKey: null
+};
+
+const ELEMENTAL_ADVANTAGE = {
+  fire: 'earth',
+  earth: 'water',
+  water: 'fire'
 };
 
 const PLAYER_CLASS_STATS = {
@@ -229,6 +237,8 @@ const translations = {
     skillDamage: 'Damage {percent}%',
     elementLabel: 'Element: {element}',
     nonElemental: 'Non-elemental',
+    critical: 'Critical!',
+    resisted: 'Resisted!',
     dir: 'ltr'
   },
   ja: {
@@ -301,6 +311,8 @@ const translations = {
     skillDamage: 'ダメージ {percent}%',
     elementLabel: '属性: {element}',
     nonElemental: '無属性',
+    critical: 'クリティカル！',
+    resisted: '耐性！',
     dir: 'ltr'
   },
   ru: {
@@ -373,6 +385,8 @@ const translations = {
     skillDamage: 'Урон {percent}%',
     elementLabel: 'Элемент: {element}',
     nonElemental: 'Без элемента',
+    critical: 'Критический удар!',
+    resisted: 'Сопротивление!',
     dir: 'ltr'
   },
   ar: {
@@ -445,6 +459,8 @@ const translations = {
     skillDamage: 'الضرر {percent}%',
     elementLabel: 'العنصر: {element}',
     nonElemental: 'غير عنصري',
+    critical: 'ضربة حرجة!',
+    resisted: 'تمت المقاومة!',
     dir: 'rtl'
   }
 };
@@ -623,6 +639,7 @@ function renderInfoDetails() {
 function createEnemyForBattle() {
   return {
     nameKey: FIRE_SLIME_TEMPLATE.nameKey,
+    element: FIRE_SLIME_TEMPLATE.element,
     maxHp: FIRE_SLIME_TEMPLATE.hp,
     hp: FIRE_SLIME_TEMPLATE.hp,
     attack: FIRE_SLIME_TEMPLATE.attack,
@@ -678,7 +695,42 @@ function clampHp(value) {
 }
 
 function calculateSkillDamage(attack, multiplier) {
-  return Math.floor(attack * multiplier);
+  return attack * multiplier;
+}
+
+function getElementalOutcome(attackElement, targetElement) {
+  if (attackElement === 'none' || !ELEMENTAL_ADVANTAGE[attackElement] || !targetElement) {
+    return { modifier: 1, feedbackKey: null };
+  }
+
+  if (ELEMENTAL_ADVANTAGE[attackElement] === targetElement) {
+    if (Math.random() < 0.5) {
+      return { modifier: 2, feedbackKey: 'critical' };
+    }
+
+    return { modifier: 1, feedbackKey: null };
+  }
+
+  if (ELEMENTAL_ADVANTAGE[targetElement] === attackElement) {
+    if (Math.random() < 0.5) {
+      return { modifier: 0.5, feedbackKey: 'resisted' };
+    }
+
+    return { modifier: 1, feedbackKey: null };
+  }
+
+  return { modifier: 1, feedbackKey: null };
+}
+
+function calculateDamageWithElement(attacker, skill, target) {
+  const baseDamage = calculateSkillDamage(attacker.attack, skill.damageMultiplier);
+  const elementalOutcome = getElementalOutcome(skill.elementType, target.element);
+  const finalDamage = Math.floor(baseDamage * elementalOutcome.modifier);
+
+  return {
+    damage: finalDamage,
+    feedbackKey: elementalOutcome.feedbackKey
+  };
 }
 
 function getHpRatio(currentHp, maxHp) {
@@ -735,8 +787,13 @@ function applyPlayerSkill(skillIndex) {
     return;
   }
 
-  const playerDamage = calculateSkillDamage(player.attack, skill.damageMultiplier);
-  enemy.hp = clampHp(enemy.hp - playerDamage);
+  battleState.feedbackKeys = [];
+
+  const playerAttackResult = calculateDamageWithElement(player, skill, enemy);
+  enemy.hp = clampHp(enemy.hp - playerAttackResult.damage);
+  if (playerAttackResult.feedbackKey) {
+    battleState.feedbackKeys.push(playerAttackResult.feedbackKey);
+  }
 
   if (enemy.hp <= 0) {
     renderBattleUI();
@@ -745,8 +802,11 @@ function applyPlayerSkill(skillIndex) {
   }
 
   const enemySkill = enemy.skills[0];
-  const enemyDamage = calculateSkillDamage(enemy.attack, enemySkill.damageMultiplier);
-  player.hp = clampHp(player.hp - enemyDamage);
+  const enemyAttackResult = calculateDamageWithElement(enemy, enemySkill, player);
+  player.hp = clampHp(player.hp - enemyAttackResult.damage);
+  if (enemyAttackResult.feedbackKey) {
+    battleState.feedbackKeys.push(enemyAttackResult.feedbackKey);
+  }
 
   if (player.hp <= 0) {
     renderBattleUI();
@@ -822,7 +882,9 @@ function renderBattleUI() {
   updateHpBar(textNodes.battleEnemyHpFill, enemy.hp, enemy.maxHp);
   updateHpBar(textNodes.battlePlayerHpFill, player.hp, player.maxHp);
 
-  if (battleState.menu === BATTLE_MENUS.OFFENSIVE) {
+  if (battleState.feedbackKeys.length > 0) {
+    textNodes.battleSubtitle.textContent = battleState.feedbackKeys.map((key) => locale[key]).join(' • ');
+  } else if (battleState.menu === BATTLE_MENUS.OFFENSIVE) {
     textNodes.battleSubtitle.textContent = locale.battleChooseSkill;
   } else if (battleState.menu === BATTLE_MENUS.DEFENDERS) {
     textNodes.battleSubtitle.textContent = locale.defendersPlaceholder;
@@ -1265,6 +1327,7 @@ function enterBattleMode() {
   battleState.menu = BATTLE_MENUS.ROOT;
   battleState.enemy = createEnemyForBattle();
   battleState.player = createPlayerBattleData(slot);
+  battleState.feedbackKeys = [];
 
   renderBattleUI();
   showScreen('battle');
@@ -1287,6 +1350,7 @@ function runFromBattle() {
   battleState.menu = BATTLE_MENUS.ROOT;
   battleState.enemy = null;
   battleState.player = null;
+  battleState.feedbackKeys = [];
   renderBattleUI();
   goToGameScreen();
 }
@@ -1325,6 +1389,7 @@ function clearBattleState() {
   battleState.menu = BATTLE_MENUS.ROOT;
   battleState.enemy = null;
   battleState.player = null;
+  battleState.feedbackKeys = [];
 }
 
 function handleVictoryContinue() {
