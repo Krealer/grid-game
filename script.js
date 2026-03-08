@@ -824,8 +824,8 @@ function renderDialogueUI() {
 
   const slot = currentSlotId ? getSlotById(currentSlotId) : null;
   const playerClassName = slot?.class || 'warrior';
-  dialoguePlayerAvatar.classList.remove('dialogue-player-warrior', 'dialogue-player-mage');
-  dialoguePlayerAvatar.classList.add(`dialogue-player-${playerClassName}`);
+  dialoguePlayerAvatar.classList.remove('portrait--warrior', 'portrait--mage');
+  dialoguePlayerAvatar.classList.add(`portrait--${playerClassName}`);
 }
 
 function enterDialogueMode(npc) {
@@ -1106,6 +1106,16 @@ function renderBattleUI() {
     if (battlePlayerPiece) {
       battlePlayerPiece.classList.remove('battle-player-warrior', 'battle-player-mage');
     }
+
+    const battleCharacter = document.querySelector('.battle-player .character');
+    if (battleCharacter) {
+      battleCharacter.classList.remove('character--warrior', 'character--mage');
+    }
+
+    const slimePiece = document.querySelector('.battle-enemy .slime');
+    if (slimePiece) {
+      slimePiece.classList.remove('slime--fire', 'slime--earth', 'slime--water');
+    }
     return;
   }
 
@@ -1121,6 +1131,18 @@ function renderBattleUI() {
   if (battlePlayerPiece) {
     battlePlayerPiece.classList.remove('battle-player-warrior', 'battle-player-mage');
     battlePlayerPiece.classList.add(`battle-player-${player.class}`);
+  }
+
+  const battleCharacter = document.querySelector('.battle-player .character');
+  if (battleCharacter) {
+    battleCharacter.classList.remove('character--warrior', 'character--mage');
+    battleCharacter.classList.add(`character--${player.class}`);
+  }
+
+  const slimePiece = document.querySelector('.battle-enemy .slime');
+  if (slimePiece) {
+    slimePiece.classList.remove('slime--fire', 'slime--earth', 'slime--water');
+    slimePiece.classList.add(`slime--${enemy.element}`);
   }
   textNodes.battleEnemyStats.textContent = `${locale.attack}: ${enemy.attack}`;
   textNodes.battleEnemyHp.textContent = `${locale.hp}: ${enemy.hp} / ${enemy.maxHp}`;
