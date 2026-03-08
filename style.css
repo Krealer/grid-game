@@ -77,6 +77,15 @@ h1 {
   cursor: pointer;
 }
 
+.game-menu-trigger {
+  margin-top: 1rem;
+}
+
+.info-details {
+  white-space: pre-line;
+  margin-top: 0.75rem;
+}
+
 .save-slot {
   text-align: start;
   display: grid;
@@ -97,6 +106,13 @@ h1 {
   display: block;
   width: auto;
   min-width: 5.5rem;
+  margin: 1rem auto 0;
+}
+
+#menu-back,
+#save-back,
+#element-back,
+#class-back {
   margin: 0 auto 0.9rem 0;
 }
 
@@ -163,7 +179,10 @@ html[dir='rtl'] .card {
   text-align: right;
 }
 
-html[dir='rtl'] .back-button {
+html[dir='rtl'] #menu-back,
+html[dir='rtl'] #save-back,
+html[dir='rtl'] #element-back,
+html[dir='rtl'] #class-back {
   margin: 0 0 0.9rem auto;
 }
 
