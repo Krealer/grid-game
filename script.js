@@ -83,12 +83,8 @@ let gameMenuStatusKey = '';
 const playerState = {
   tileX: 0,
   tileY: 0,
-  renderX: 0,
-  renderY: 0,
   path: [],
   moving: false,
-  stepFromX: 0,
-  stepFromY: 0,
   stepToX: 0,
   stepToY: 0,
   stepElapsed: 0,
@@ -550,12 +546,8 @@ function goToClassScreen() {
 function setPlayerPosition(x, y) {
   playerState.tileX = x;
   playerState.tileY = y;
-  playerState.renderX = x;
-  playerState.renderY = y;
   playerState.path = [];
   playerState.moving = false;
-  playerState.stepFromX = x;
-  playerState.stepFromY = y;
   playerState.stepToX = x;
   playerState.stepToY = y;
   playerState.stepElapsed = 0;
@@ -568,17 +560,14 @@ function beginNextStep() {
     playerState.moving = false;
     playerState.lastTimestamp = null;
     playerState.stepElapsed = 0;
-    playerState.renderX = playerState.tileX;
-    playerState.renderY = playerState.tileY;
     return;
   }
 
   const nextTile = playerState.path.shift();
-  playerState.stepFromX = playerState.tileX;
-  playerState.stepFromY = playerState.tileY;
   playerState.stepToX = nextTile.x;
   playerState.stepToY = nextTile.y;
   playerState.stepElapsed = 0;
+  playerState.lastTimestamp = null;
   playerState.moving = true;
 }
 
@@ -652,8 +641,8 @@ function handleQuitWithoutSaving() {
 function updatePlayerPiece() {
   const tilePercent = 100 / GRID_SIZE;
   const tokenSizePercent = tilePercent * 0.68;
-  const leftPercent = (playerState.renderX * tilePercent) + (tilePercent * 0.16);
-  const topPercent = (playerState.renderY * tilePercent) + (tilePercent * 0.16);
+  const leftPercent = (playerState.tileX * tilePercent) + (tilePercent * 0.16);
+  const topPercent = (playerState.tileY * tilePercent) + (tilePercent * 0.16);
 
   playerPiece.style.width = `${tokenSizePercent}%`;
   playerPiece.style.height = `${tokenSizePercent}%`;
@@ -748,8 +737,6 @@ function moveToTile(targetX, targetY) {
     return;
   }
 
-  playerState.renderX = playerState.tileX;
-  playerState.renderY = playerState.tileY;
   playerState.path = path;
   playerState.moving = false;
   playerState.stepElapsed = 0;
@@ -764,16 +751,11 @@ function animationStep(timestamp) {
     playerState.lastTimestamp = timestamp;
     playerState.stepElapsed += dt;
 
-    const progress = Math.min(playerState.stepElapsed / TILE_STEP_DURATION, 1);
-    playerState.renderX = playerState.stepFromX + ((playerState.stepToX - playerState.stepFromX) * progress);
-    playerState.renderY = playerState.stepFromY + ((playerState.stepToY - playerState.stepFromY) * progress);
-
-    if (progress >= 1) {
+    if (playerState.stepElapsed >= TILE_STEP_DURATION) {
       playerState.tileX = playerState.stepToX;
       playerState.tileY = playerState.stepToY;
-      playerState.renderX = playerState.tileX;
-      playerState.renderY = playerState.tileY;
       beginNextStep();
+      renderInfoDetails();
     }
 
     updatePlayerPiece();
