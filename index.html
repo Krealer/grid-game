@@ -38,6 +38,39 @@
         </nav>
       </div>
     </section>
+
+    <section id="save-screen" class="screen" hidden aria-labelledby="save-title">
+      <div class="card">
+        <button type="button" class="back-button" id="save-back"></button>
+        <h1 id="save-title"></h1>
+        <p id="save-subtitle" class="subtitle"></p>
+        <ul class="menu-options" id="save-slots"></ul>
+      </div>
+    </section>
+
+    <section id="element-screen" class="screen" hidden aria-labelledby="element-title">
+      <div class="card">
+        <button type="button" class="back-button" id="element-back"></button>
+        <h1 id="element-title"></h1>
+        <ul class="menu-options">
+          <li><button type="button" class="menu-option element-option" data-element="fire"></button></li>
+          <li><button type="button" class="menu-option element-option" data-element="water"></button></li>
+          <li><button type="button" class="menu-option element-option" data-element="earth"></button></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="class-screen" class="screen" hidden aria-labelledby="class-title">
+      <div class="card">
+        <button type="button" class="back-button" id="class-back"></button>
+        <h1 id="class-title"></h1>
+        <ul class="menu-options">
+          <li><button type="button" class="menu-option class-option" data-class="warrior"></button></li>
+          <li><button type="button" class="menu-option class-option" data-class="mage"></button></li>
+        </ul>
+        <p id="class-confirmation" class="subtitle"></p>
+      </div>
+    </section>
   </main>
 
   <script src="script.js"></script>
