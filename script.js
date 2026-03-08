@@ -8,6 +8,14 @@ const ENEMY_STARTS = [
   { id: 'enemy-water-slime', x: 9, y: 4, nameKey: 'waterSlime', element: 'water' }
 ];
 
+const NPC_TEMPLATE = { id: 'npc-guide', type: 'npc', x: 11, y: 11, nameKey: 'npcGuide' };
+
+const DIALOGUE_LINES = [
+  { speaker: 'npc', textKey: 'npcGreeting' },
+  { speaker: 'player', textKey: 'playerReply' },
+  { speaker: 'npc', textKey: 'npcFarewell' }
+];
+
 const MAP_LAYOUT = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   [0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0],
@@ -31,6 +39,7 @@ const screens = {
   class: document.getElementById('class-screen'),
   game: document.getElementById('game-screen'),
   battle: document.getElementById('battle-screen'),
+  dialogue: document.getElementById('dialogue-screen'),
   victory: document.getElementById('victory-screen'),
   defeat: document.getElementById('defeat-screen'),
   gameMenu: document.getElementById('game-menu-screen'),
@@ -72,6 +81,10 @@ const textNodes = {
   battlePlayerHp: document.getElementById('battle-player-hp'),
   battlePlayerHpFill: document.getElementById('battle-player-hp-fill'),
   battleSubtitle: document.getElementById('battle-subtitle'),
+  dialogueTitle: document.getElementById('dialogue-title'),
+  dialogueSpeaker: document.getElementById('dialogue-speaker'),
+  dialogueLine: document.getElementById('dialogue-line'),
+  dialogueHelper: document.getElementById('dialogue-helper'),
   victoryTitle: document.getElementById('victory-title'),
   victoryMessage: document.getElementById('victory-message'),
   victoryContinue: document.getElementById('victory-continue'),
@@ -96,6 +109,8 @@ const textNodes = {
 
 const saveSlotsList = document.getElementById('save-slots');
 const battleOptionsList = document.getElementById('battle-options-list');
+const dialogueArea = document.getElementById('dialogue-area');
+const dialoguePlayerAvatar = document.getElementById('dialogue-player-avatar');
 
 const STORAGE_LANGUAGE_KEY = 'preferredLanguage';
 const STORAGE_SAVE_KEY = 'gridGameSaveSlots';
@@ -117,6 +132,7 @@ const playerState = {
 };
 
 let enemyStates = [];
+let npcState = null;
 
 const playerPiece = document.createElement('div');
 playerPiece.className = 'player-piece';
@@ -146,7 +162,13 @@ const SLIME_TEMPLATE = {
   ]
 };
 enemyStates = createInitialEnemyStates();
+npcState = createNpcState(enemyStates);
 
+const dialogueState = {
+  npcId: null,
+  lines: [],
+  index: 0
+};
 
 const battleState = {
   menu: BATTLE_MENUS.ROOT,
@@ -190,7 +212,7 @@ const translations = {
     mage: 'Mage',
     classSaved: 'Selection saved for Slot {number}.',
     gameplayTitle: 'Grid Movement',
-    gameplayHelper: 'Tap or click a reachable gray tile to move. Tap a nearby slime to battle.',
+    gameplayHelper: 'Tap or click a reachable gray tile to move. Tap a nearby slime to battle, or tap a nearby NPC to talk.',
     gameplaySlot: 'Slot {number}: {element} • {className}',
     battleTitle: 'Battle',
     battleStatusPlayer: 'Player',
@@ -244,6 +266,13 @@ const translations = {
     nonElemental: 'Non-elemental',
     critical: 'Critical!',
     resisted: 'Resisted!',
+    npcGuide: 'Village Guide',
+    dialogueTitle: 'Dialogue',
+    dialogueTapToContinue: 'Tap or click to continue.',
+    dialoguePlayerLabel: 'You',
+    npcGreeting: 'Welcome, traveler. The paths ahead can be dangerous.',
+    playerReply: 'Thanks. I will stay alert and keep moving.',
+    npcFarewell: 'Good luck out there. Come back if you need guidance.',
     dir: 'ltr'
   },
   ja: {
@@ -266,7 +295,7 @@ const translations = {
     mage: '魔法使い',
     classSaved: 'スロット {number} に選択を保存しました。',
     gameplayTitle: 'グリッド移動',
-    gameplayHelper: '到達できる灰色タイルをタップまたはクリックして移動します。',
+    gameplayHelper: '到達できる灰色タイルをタップまたはクリックして移動します。近くのスライムは戦闘、近くのNPCとは会話できます。',
     gameplaySlot: 'スロット {number}: {element} • {className}',
     battleTitle: 'バトル',
     battleStatusPlayer: 'プレイヤー',
@@ -320,6 +349,13 @@ const translations = {
     nonElemental: '無属性',
     critical: 'クリティカル！',
     resisted: '耐性！',
+    npcGuide: '村の案内人',
+    dialogueTitle: '会話',
+    dialogueTapToContinue: 'タップまたはクリックで続行します。',
+    dialoguePlayerLabel: 'あなた',
+    npcGreeting: 'ようこそ旅人さん。この先の道は危険です。',
+    playerReply: 'ありがとう。気をつけて進みます。',
+    npcFarewell: '幸運を。案内が必要ならまた来てください。',
     dir: 'ltr'
   },
   ru: {
@@ -342,7 +378,7 @@ const translations = {
     mage: 'Маг',
     classSaved: 'Выбор сохранён для слота {number}.',
     gameplayTitle: 'Движение по сетке',
-    gameplayHelper: 'Нажмите на достижимую серую клетку, чтобы переместиться.',
+    gameplayHelper: 'Нажмите на достижимую серую клетку, чтобы переместиться. Нажмите на соседнего слизня для боя или на соседнего NPC для диалога.',
     gameplaySlot: 'Слот {number}: {element} • {className}',
     battleTitle: 'Бой',
     battleStatusPlayer: 'Игрок',
@@ -396,6 +432,13 @@ const translations = {
     nonElemental: 'Без элемента',
     critical: 'Критический удар!',
     resisted: 'Сопротивление!',
+    npcGuide: 'Проводник деревни',
+    dialogueTitle: 'Диалог',
+    dialogueTapToContinue: 'Нажмите или коснитесь, чтобы продолжить.',
+    dialoguePlayerLabel: 'Вы',
+    npcGreeting: 'Добро пожаловать, путник. Дороги впереди могут быть опасны.',
+    playerReply: 'Спасибо. Я буду осторожен и продолжу путь.',
+    npcFarewell: 'Удачи. Возвращайтесь, если понадобится совет.',
     dir: 'ltr'
   },
   ar: {
@@ -418,7 +461,7 @@ const translations = {
     mage: 'ساحر',
     classSaved: 'تم حفظ الاختيار في الخانة {number}.',
     gameplayTitle: 'الحركة على الشبكة',
-    gameplayHelper: 'انقر أو المس مربّعًا رماديًا يمكن الوصول إليه للتحرك. المس سلايمًا مجاورًا لبدء المعركة.',
+    gameplayHelper: 'انقر أو المس مربّعًا رماديًا يمكن الوصول إليه للتحرك. المس سلايمًا مجاورًا للمعركة أو شخصية NPC مجاورة لبدء الحوار.',
     gameplaySlot: 'الخانة {number}: {element} • {className}',
     battleTitle: 'معركة',
     battleStatusPlayer: 'اللاعب',
@@ -472,6 +515,13 @@ const translations = {
     nonElemental: 'غير عنصري',
     critical: 'ضربة حرجة!',
     resisted: 'تمت المقاومة!',
+    npcGuide: 'مرشد القرية',
+    dialogueTitle: 'حوار',
+    dialogueTapToContinue: 'المس أو انقر للمتابعة.',
+    dialoguePlayerLabel: 'أنت',
+    npcGreeting: 'مرحبًا أيها المسافر. الطرق أمامك قد تكون خطيرة.',
+    playerReply: 'شكرًا لك. سأبقى منتبهًا وأتابع التقدم.',
+    npcFarewell: 'حظًا موفقًا. عُد إذا احتجت إلى إرشاد.',
     dir: 'rtl'
   }
 };
@@ -538,6 +588,44 @@ function createInitialEnemyStates() {
   return ENEMY_STARTS.map((enemyTemplate) => createEnemyState(enemyTemplate, occupiedKeys));
 }
 
+function isValidNpcSpawn(x, y, enemyList) {
+  if (!isGround(x, y) || (x === 0 && y === 0)) {
+    return false;
+  }
+
+  return !enemyList.some((enemy) => enemy.x === x && enemy.y === y);
+}
+
+function createNpcState(enemyList) {
+  const desired = { x: NPC_TEMPLATE.x, y: NPC_TEMPLATE.y };
+
+  if (isValidNpcSpawn(desired.x, desired.y, enemyList)) {
+    return { ...NPC_TEMPLATE, x: desired.x, y: desired.y };
+  }
+
+  for (let y = GRID_SIZE - 1; y >= 0; y -= 1) {
+    for (let x = GRID_SIZE - 1; x >= 0; x -= 1) {
+      if (isValidNpcSpawn(x, y, enemyList)) {
+        return { ...NPC_TEMPLATE, x, y };
+      }
+    }
+  }
+
+  return { ...NPC_TEMPLATE, x: 0, y: 0 };
+}
+
+function getNpcAtTile(x, y) {
+  if (!npcState) {
+    return null;
+  }
+
+  return npcState.x === x && npcState.y === y ? npcState : null;
+}
+
+function isNpcTile(x, y) {
+  return Boolean(getNpcAtTile(x, y));
+}
+
 function getEnemyAtTile(x, y) {
   return enemyStates.find((enemy) => enemy.x === x && enemy.y === y) || null;
 }
@@ -547,7 +635,7 @@ function isEnemyTile(x, y) {
 }
 
 function isWalkable(x, y) {
-  return isGround(x, y) && !isEnemyTile(x, y);
+  return isGround(x, y) && !isEnemyTile(x, y) && !isNpcTile(x, y);
 }
 
 function getDefaultSlots() {
@@ -680,6 +768,63 @@ function renderInfoDetails() {
   textNodes.infoDetails.textContent = lines.join('\n');
 }
 
+
+function renderDialogueUI() {
+  const locale = getLocale();
+  const line = dialogueState.lines[dialogueState.index];
+
+  textNodes.dialogueTitle.textContent = locale.dialogueTitle;
+  textNodes.dialogueHelper.textContent = locale.dialogueTapToContinue;
+
+  if (!line) {
+    textNodes.dialogueSpeaker.textContent = '';
+    textNodes.dialogueLine.textContent = '';
+    return;
+  }
+
+  const speakerName = line.speaker === 'player' ? locale.dialoguePlayerLabel : locale.npcGuide;
+  textNodes.dialogueSpeaker.textContent = speakerName;
+  textNodes.dialogueLine.textContent = locale[line.textKey];
+
+  const playerActive = line.speaker === 'player';
+  dialogueArea.classList.toggle('speaker-player', playerActive);
+  dialogueArea.classList.toggle('speaker-npc', !playerActive);
+
+  const slot = currentSlotId ? getSlotById(currentSlotId) : null;
+  const playerClassName = slot?.class || 'warrior';
+  dialoguePlayerAvatar.classList.remove('dialogue-player-warrior', 'dialogue-player-mage');
+  dialoguePlayerAvatar.classList.add(`dialogue-player-${playerClassName}`);
+}
+
+function enterDialogueMode(npc) {
+  if (!npc) {
+    return;
+  }
+
+  dialogueState.npcId = npc.id;
+  dialogueState.lines = DIALOGUE_LINES;
+  dialogueState.index = 0;
+  renderDialogueUI();
+  showScreen('dialogue');
+}
+
+function advanceDialogue() {
+  if (screens.dialogue.hidden) {
+    return;
+  }
+
+  dialogueState.index += 1;
+
+  if (dialogueState.index >= dialogueState.lines.length) {
+    dialogueState.npcId = null;
+    dialogueState.lines = [];
+    dialogueState.index = 0;
+    showScreen('game');
+    return;
+  }
+
+  renderDialogueUI();
+}
 
 function createEnemyForBattle(enemy) {
   return {
@@ -1161,6 +1306,7 @@ function goToSaveScreen() {
 function goToElementScreen(slotId) {
   currentSlotId = slotId;
   enemyStates = createInitialEnemyStates();
+  npcState = createNpcState(enemyStates);
   buildGrid();
   showScreen('element');
 }
@@ -1277,6 +1423,23 @@ function updatePlayerPiece() {
   playerPiece.style.top = `${topPercent}%`;
 }
 
+function createNpcPiece(npc) {
+  const npcPiece = document.createElement('div');
+  npcPiece.className = 'npc-piece';
+
+  const tilePercent = 100 / GRID_SIZE;
+  const tokenSizePercent = tilePercent * 0.68;
+  const leftPercent = (npc.x * tilePercent) + (tilePercent * 0.16);
+  const topPercent = (npc.y * tilePercent) + (tilePercent * 0.16);
+
+  npcPiece.style.width = `${tokenSizePercent}%`;
+  npcPiece.style.height = `${tokenSizePercent}%`;
+  npcPiece.style.left = `${leftPercent}%`;
+  npcPiece.style.top = `${topPercent}%`;
+
+  return npcPiece;
+}
+
 function createEnemyPiece(enemy) {
   const enemyPiece = document.createElement('div');
   enemyPiece.className = `enemy-piece enemy-piece-${enemy.element}`;
@@ -1311,7 +1474,8 @@ function buildGrid() {
   }
 
   gridBoard.innerHTML = '';
-  gridBoard.append(fragment, playerPiece, ...enemyStates.map((enemy) => createEnemyPiece(enemy)));
+  const npcPiece = npcState ? [createNpcPiece(npcState)] : [];
+  gridBoard.append(fragment, playerPiece, ...enemyStates.map((enemy) => createEnemyPiece(enemy)), ...npcPiece);
   updatePlayerPiece();
 }
 
@@ -1390,8 +1554,8 @@ function moveToTile(targetX, targetY) {
 }
 
 
-function isOrthogonallyAdjacentToEnemy(enemy) {
-  const distance = Math.abs(playerState.tileX - enemy.x) + Math.abs(playerState.tileY - enemy.y);
+function isOrthogonallyAdjacentToEntity(entity) {
+  const distance = Math.abs(playerState.tileX - entity.x) + Math.abs(playerState.tileY - entity.y);
   return distance === 1;
 }
 
@@ -1412,18 +1576,37 @@ function enterBattleMode(enemy) {
   showScreen('battle');
 }
 
-function tryInteractWithEnemy(tileX, tileY) {
-  const enemy = getEnemyAtTile(tileX, tileY);
+function getInteractableAtTile(x, y) {
+  const enemy = getEnemyAtTile(x, y);
+  if (enemy) {
+    return { type: 'enemy', entity: enemy };
+  }
 
-  if (!enemy) {
+  const npc = getNpcAtTile(x, y);
+  if (npc) {
+    return { type: 'npc', entity: npc };
+  }
+
+  return null;
+}
+
+function tryInteractWithEntity(tileX, tileY) {
+  const target = getInteractableAtTile(tileX, tileY);
+
+  if (!target) {
     return false;
   }
 
-  if (!isOrthogonallyAdjacentToEnemy(enemy)) {
+  if (!isOrthogonallyAdjacentToEntity(target.entity)) {
     return true;
   }
 
-  enterBattleMode(enemy);
+  if (target.type === 'enemy') {
+    enterBattleMode(target.entity);
+  } else if (target.type === 'npc') {
+    enterDialogueMode(target.entity);
+  }
+
   return true;
 }
 
@@ -1524,7 +1707,7 @@ gridBoard.addEventListener('click', (event) => {
     return;
   }
 
-  if (tryInteractWithEnemy(x, y)) {
+  if (tryInteractWithEntity(x, y)) {
     return;
   }
 
@@ -1532,6 +1715,12 @@ gridBoard.addEventListener('click', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
+  if (!screens.dialogue.hidden && (event.key === 'Enter' || event.key === ' ')) {
+    event.preventDefault();
+    advanceDialogue();
+    return;
+  }
+
   if (screens.game.hidden) {
     return;
   }
@@ -1616,6 +1805,7 @@ saveSlotsList.addEventListener('click', (event) => {
 
   currentSlotId = slotId;
   enemyStates = createInitialEnemyStates();
+  npcState = createNpcState(enemyStates);
   buildGrid();
   const savedPos = normalizePosition(slot.playerData);
   setPlayerPosition(savedPos.x, savedPos.y);
@@ -1652,6 +1842,23 @@ classButtons.forEach((button) => {
     renderSaveSlots();
     goToGameScreen();
   });
+});
+
+dialogueArea.addEventListener('click', () => {
+  if (screens.dialogue.hidden) {
+    return;
+  }
+
+  advanceDialogue();
+});
+
+dialogueArea.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') {
+    return;
+  }
+
+  event.preventDefault();
+  advanceDialogue();
 });
 
 const savedLanguage = localStorage.getItem(STORAGE_LANGUAGE_KEY);

@@ -125,6 +125,28 @@
       </div>
     </section>
 
+    <section id="dialogue-screen" class="screen" hidden aria-labelledby="dialogue-title">
+      <div class="card dialogue-card" id="dialogue-area" role="button" tabindex="0" aria-live="polite">
+        <h1 id="dialogue-title"></h1>
+        <div class="dialogue-stage" aria-label="Dialogue stage">
+          <div class="dialogue-speaker dialogue-speaker-player" aria-label="Player">
+            <div class="dialogue-bubble" id="dialogue-player-bubble" aria-hidden="true"></div>
+            <div class="dialogue-head dialogue-player-head dialogue-player-warrior" id="dialogue-player-avatar">
+              <div class="dialogue-player-helmet"></div>
+              <div class="dialogue-player-hat"></div>
+            </div>
+          </div>
+          <div class="dialogue-speaker dialogue-speaker-npc" aria-label="NPC">
+            <div class="dialogue-bubble" id="dialogue-npc-bubble" aria-hidden="true"></div>
+            <div class="dialogue-head dialogue-npc-head"></div>
+          </div>
+        </div>
+        <p id="dialogue-speaker" class="dialogue-speaker-label"></p>
+        <p id="dialogue-line" class="subtitle dialogue-line"></p>
+        <p id="dialogue-helper" class="subtitle"></p>
+      </div>
+    </section>
+
     <section id="victory-screen" class="screen" hidden aria-labelledby="victory-title">
       <div class="card">
         <h1 id="victory-title"></h1>
