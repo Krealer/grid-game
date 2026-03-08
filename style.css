@@ -169,7 +169,8 @@ h1 {
 }
 
 .player-piece,
-.enemy-piece {
+.enemy-piece,
+.npc-piece {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
@@ -189,6 +190,113 @@ h1 {
 
 .enemy-piece-water {
   background: #0a84ff;
+}
+
+.npc-piece {
+  background: #ffffff;
+  border: 2px solid #34c759;
+}
+
+.dialogue-card {
+  cursor: pointer;
+  user-select: none;
+}
+
+.dialogue-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.dialogue-stage {
+  margin-top: 1rem;
+  min-height: 120px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.dialogue-speaker {
+  width: 42%;
+  display: grid;
+  justify-items: center;
+  gap: 0.45rem;
+}
+
+.dialogue-head {
+  width: min(24vw, 80px);
+  height: min(24vw, 80px);
+  border-radius: 50%;
+  position: relative;
+}
+
+.dialogue-player-head {
+  border: 3px solid #ffffff;
+}
+
+.dialogue-player-helmet,
+.dialogue-player-hat {
+  position: absolute;
+}
+
+.dialogue-player-warrior .dialogue-player-helmet {
+  top: -8%;
+  left: 12%;
+  width: 76%;
+  height: 34%;
+  border: 3px solid #ffffff;
+  border-bottom: 0;
+  border-radius: 999px 999px 0 0;
+}
+
+.dialogue-player-warrior .dialogue-player-hat {
+  display: none;
+}
+
+.dialogue-player-mage .dialogue-player-helmet {
+  display: none;
+}
+
+.dialogue-player-mage .dialogue-player-hat {
+  top: -36%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 18px solid transparent;
+  border-right: 18px solid transparent;
+  border-bottom: 30px solid #ffffff;
+  transform: translateX(-50%);
+}
+
+.dialogue-npc-head {
+  background: #ffffff;
+  border: 3px solid #34c759;
+}
+
+.dialogue-bubble {
+  width: 52px;
+  height: 32px;
+  border: 2px solid #5a668f;
+  border-radius: 14px;
+  opacity: 0.35;
+}
+
+.dialogue-card.speaker-player #dialogue-player-bubble,
+.dialogue-card.speaker-npc #dialogue-npc-bubble {
+  border-color: var(--accent);
+  opacity: 1;
+}
+
+.dialogue-speaker-label {
+  margin: 0.8rem 0 0;
+  font-weight: 700;
+}
+
+.dialogue-line {
+  min-height: 2.8rem;
 }
 
 .battle-card {
@@ -477,6 +585,10 @@ html[dir='rtl'] .card {
 
 html[dir='rtl'] .battle-status {
   text-align: right;
+}
+
+html[dir='rtl'] .dialogue-stage {
+  flex-direction: row-reverse;
 }
 
 html[dir='rtl'] #menu-back,
