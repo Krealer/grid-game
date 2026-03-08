@@ -101,22 +101,25 @@
         </div>
         <div class="battle-arena" aria-label="Battle arena">
           <div class="battle-piece battle-player battle-player-warrior" aria-label="Player">
-            <div class="battle-player-body" aria-hidden="true">
-              <div class="battle-player-head"></div>
-              <div class="battle-player-torso"></div>
-              <div class="battle-player-arm battle-player-arm-left"></div>
-              <div class="battle-player-arm battle-player-arm-right"></div>
-              <div class="battle-player-leg battle-player-leg-left"></div>
-              <div class="battle-player-leg battle-player-leg-right"></div>
-              <div class="battle-player-armour"></div>
-              <div class="battle-player-hat"></div>
-              <div class="battle-player-weapon"></div>
+            <div class="character character--player character--warrior" aria-hidden="true">
+              <div class="character__head"></div>
+              <div class="character__hat"></div>
+              <div class="character__torso"></div>
+              <div class="character__armor"></div>
+              <div class="character__arm character__arm--left"></div>
+              <div class="character__arm character__arm--right"></div>
+              <div class="character__leg character__leg--left"></div>
+              <div class="character__leg character__leg--right"></div>
+              <div class="character__weapon"></div>
             </div>
           </div>
           <div class="battle-piece battle-enemy battle-enemy-fire" aria-label="Enemy">
-            <div class="battle-slime-body" aria-hidden="true">
-              <div class="battle-slime-eye battle-slime-eye-left"></div>
-              <div class="battle-slime-eye battle-slime-eye-right"></div>
+            <div class="slime slime--fire" aria-hidden="true">
+              <div class="slime__body">
+                <div class="slime__shine"></div>
+                <div class="slime__eye slime__eye--left"></div>
+                <div class="slime__eye slime__eye--right"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -131,14 +134,19 @@
         <div class="dialogue-stage" aria-label="Dialogue stage">
           <div class="dialogue-speaker dialogue-speaker-player" aria-label="Player">
             <div class="dialogue-bubble" id="dialogue-player-bubble" aria-hidden="true"></div>
-            <div class="dialogue-head dialogue-player-head dialogue-player-warrior" id="dialogue-player-avatar">
-              <div class="dialogue-player-helmet"></div>
-              <div class="dialogue-player-hat"></div>
+            <div class="dialogue-head portrait portrait--player portrait--warrior" id="dialogue-player-avatar">
+              <div class="portrait__head"></div>
+              <div class="portrait__hat"></div>
+              <div class="portrait__armor"></div>
             </div>
           </div>
           <div class="dialogue-speaker dialogue-speaker-npc" aria-label="NPC">
             <div class="dialogue-bubble" id="dialogue-npc-bubble" aria-hidden="true"></div>
-            <div class="dialogue-head dialogue-npc-head"></div>
+            <div class="dialogue-head portrait portrait--npc">
+              <div class="portrait__head"></div>
+              <div class="portrait__hat"></div>
+              <div class="portrait__armor"></div>
+            </div>
           </div>
         </div>
         <p id="dialogue-speaker" class="dialogue-speaker-label"></p>
