@@ -1,61 +1,85 @@
-import { createGame } from './js/game.js';
+const languageScreen = document.getElementById('language-screen');
+const menuScreen = document.getElementById('menu-screen');
+const languageButtons = [...document.querySelectorAll('.language-option')];
 
-const languageScreen = document.querySelector('.language-screen');
-const gameShell = document.querySelector('.game-shell');
-const languageStatus = document.getElementById('language-status');
-const languageOptions = [...document.querySelectorAll('.language-option')];
+const menuTitle = document.getElementById('menu-title');
+const menuInstruction = document.getElementById('menu-instruction');
+const menuPlay = document.getElementById('menu-play');
+const menuOptions = document.getElementById('menu-options');
+const menuMedals = document.getElementById('menu-medals');
+const menuCredits = document.getElementById('menu-credits');
 
-const LANGUAGE_LABELS = {
-  en: 'English',
-  ja: '日本語',
-  ru: 'Русский',
-  ar: 'العربية'
+const STORAGE_KEY = 'preferredLanguage';
+
+const translations = {
+  en: {
+    title: 'Home Menu',
+    instruction: 'Select an option.',
+    play: 'Play',
+    options: 'Options',
+    medals: 'Medals',
+    credits: 'Credits',
+    dir: 'ltr'
+  },
+  ja: {
+    title: 'ホームメニュー',
+    instruction: '項目を選んでください。',
+    play: 'プレイ',
+    options: 'オプション',
+    medals: 'メダル',
+    credits: 'クレジット',
+    dir: 'ltr'
+  },
+  ru: {
+    title: 'Главное меню',
+    instruction: 'Выберите пункт.',
+    play: 'Играть',
+    options: 'Настройки',
+    medals: 'Медали',
+    credits: 'Титры',
+    dir: 'ltr'
+  },
+  ar: {
+    title: 'القائمة الرئيسية',
+    instruction: 'اختر خيارًا.',
+    play: 'لعب',
+    options: 'الخيارات',
+    medals: 'الأوسمة',
+    credits: 'الاعتمادات',
+    dir: 'rtl'
+  }
 };
 
-let selectedLanguage = localStorage.getItem('preferredLanguage') || '';
-let gameStarted = false;
+function showMenu(language) {
+  const locale = translations[language];
 
-const setSelectedLanguage = (languageCode) => {
-  selectedLanguage = languageCode;
-  localStorage.setItem('preferredLanguage', languageCode);
-
-  languageOptions.forEach((option) => {
-    const isSelected = option.dataset.language === languageCode;
-    option.classList.toggle('is-selected', isSelected);
-    option.setAttribute('aria-pressed', String(isSelected));
-  });
-
-  const languageLabel = LANGUAGE_LABELS[languageCode] || languageCode;
-  languageStatus.textContent = `Selected language: ${languageLabel}`;
-};
-
-const startGame = () => {
-  if (gameStarted) {
+  if (!locale) {
     return;
   }
 
-  gameStarted = true;
+  localStorage.setItem(STORAGE_KEY, language);
+
+  document.documentElement.lang = language;
+  document.documentElement.dir = locale.dir;
+
+  menuTitle.textContent = locale.title;
+  menuInstruction.textContent = locale.instruction;
+  menuPlay.textContent = locale.play;
+  menuOptions.textContent = locale.options;
+  menuMedals.textContent = locale.medals;
+  menuCredits.textContent = locale.credits;
+
   languageScreen.hidden = true;
-  gameShell.hidden = false;
-
-  const game = createGame({
-    canvas: document.getElementById('game'),
-    scoreEl: document.getElementById('score'),
-    livesEl: document.getElementById('lives'),
-    statusEl: document.getElementById('status'),
-    controls: document.querySelector('.controls')
-  });
-
-  game.start();
-};
-
-if (selectedLanguage) {
-  setSelectedLanguage(selectedLanguage);
+  menuScreen.hidden = false;
 }
 
-languageOptions.forEach((option) => {
-  option.addEventListener('click', () => {
-    setSelectedLanguage(option.dataset.language);
-    startGame();
+languageButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    showMenu(button.dataset.language);
   });
 });
+
+const savedLanguage = localStorage.getItem(STORAGE_KEY);
+if (savedLanguage) {
+  showMenu(savedLanguage);
+}
