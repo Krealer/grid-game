@@ -43,6 +43,7 @@ const screens = {
   victory: document.getElementById('victory-screen'),
   defeat: document.getElementById('defeat-screen'),
   gameMenu: document.getElementById('game-menu-screen'),
+  settings: document.getElementById('settings-screen'),
   inventory: document.getElementById('inventory-screen'),
   info: document.getElementById('info-screen')
 };
@@ -95,9 +96,13 @@ const textNodes = {
   gmBackToGame: document.getElementById('gm-back-to-game'),
   gmInventory: document.getElementById('gm-inventory'),
   gmInfo: document.getElementById('gm-info'),
+  gmSettings: document.getElementById('gm-settings'),
   gmSave: document.getElementById('gm-save'),
   gmSaveQuit: document.getElementById('gm-save-quit'),
   gmQuit: document.getElementById('gm-quit'),
+  settingsTitle: document.getElementById('settings-title'),
+  settingsToggleCoordinates: document.getElementById('settings-toggle-coordinates'),
+  settingsBack: document.getElementById('settings-back'),
   inventoryTitle: document.getElementById('inventory-title'),
   inventoryHelper: document.getElementById('inventory-helper'),
   inventoryBack: document.getElementById('inventory-back'),
@@ -114,11 +119,13 @@ const dialoguePlayerAvatar = document.getElementById('dialogue-player-avatar');
 
 const STORAGE_LANGUAGE_KEY = 'preferredLanguage';
 const STORAGE_SAVE_KEY = 'gridGameSaveSlots';
+const STORAGE_SHOW_COORDINATES_KEY = 'gridGameShowCoordinates';
 const SLOT_COUNT = 3;
 
 let currentLanguage = 'en';
 let currentSlotId = null;
 let gameMenuStatusKey = '';
+let showCoordinates = false;
 
 const playerState = {
   tileX: 0,
@@ -222,11 +229,15 @@ const translations = {
     backToGame: 'Back to Game',
     inventory: 'Inventory',
     info: 'Info',
+    settings: 'Settings',
+    showCoordinates: 'Show Coordinates',
+    on: 'On',
+    off: 'Off',
     save: 'Save',
     saveQuit: 'Save & Quit',
     quit: 'Quit',
     inventoryTitle: 'Inventory',
-    inventoryPlaceholder: 'Inventory screen placeholder.',
+    inventoryEmpty: 'Your inventory is empty',
     infoTitle: 'Info',
     infoPlaceholder: 'Current character and slot information.',
     saved: 'Saved.',
@@ -305,11 +316,15 @@ const translations = {
     backToGame: 'ゲームに戻る',
     inventory: 'インベントリ',
     info: '情報',
+    settings: '設定',
+    showCoordinates: '座標を表示',
+    on: 'オン',
+    off: 'オフ',
     save: 'セーブ',
     saveQuit: 'セーブして終了',
     quit: '終了',
     inventoryTitle: 'インベントリ',
-    inventoryPlaceholder: 'インベントリ画面のプレースホルダーです。',
+    inventoryEmpty: 'あなたのインベントリは空です',
     infoTitle: '情報',
     infoPlaceholder: '現在のキャラクター情報とスロット情報です。',
     saved: '保存しました。',
@@ -388,11 +403,15 @@ const translations = {
     backToGame: 'Вернуться в игру',
     inventory: 'Инвентарь',
     info: 'Инфо',
+    settings: 'Настройки',
+    showCoordinates: 'Показывать координаты',
+    on: 'Вкл',
+    off: 'Выкл',
     save: 'Сохранить',
     saveQuit: 'Сохранить и выйти',
     quit: 'Выйти',
     inventoryTitle: 'Инвентарь',
-    inventoryPlaceholder: 'Экран инвентаря (заглушка).',
+    inventoryEmpty: 'Ваш инвентарь пуст',
     infoTitle: 'Инфо',
     infoPlaceholder: 'Текущая информация о персонаже и слоте.',
     saved: 'Сохранено.',
@@ -471,11 +490,15 @@ const translations = {
     backToGame: 'العودة إلى اللعبة',
     inventory: 'المخزون',
     info: 'معلومات',
+    settings: 'الإعدادات',
+    showCoordinates: 'إظهار الإحداثيات',
+    on: 'تشغيل',
+    off: 'إيقاف',
     save: 'حفظ',
     saveQuit: 'حفظ وإنهاء',
     quit: 'إنهاء',
     inventoryTitle: 'المخزون',
-    inventoryPlaceholder: 'هذه شاشة المخزون التجريبية.',
+    inventoryEmpty: 'مخزونك فارغ',
     infoTitle: 'معلومات',
     infoPlaceholder: 'معلومات الشخصية الحالية والخانة.',
     saved: 'تم الحفظ.',
@@ -746,6 +769,15 @@ function renderGameplayInfo() {
   } else {
     textNodes.gameSlot.textContent = '';
   }
+}
+
+function renderSettingsText() {
+  const locale = getLocale();
+  const stateLabel = showCoordinates ? locale.on : locale.off;
+
+  textNodes.settingsTitle.textContent = locale.settings;
+  textNodes.settingsToggleCoordinates.textContent = `${locale.showCoordinates}: ${stateLabel}`;
+  textNodes.settingsBack.textContent = locale.back;
 }
 
 function renderInfoDetails() {
@@ -1197,12 +1229,14 @@ function renderStaticText() {
   textNodes.gmBackToGame.textContent = locale.backToGame;
   textNodes.gmInventory.textContent = locale.inventory;
   textNodes.gmInfo.textContent = locale.info;
+  textNodes.gmSettings.textContent = locale.settings;
   textNodes.gmSave.textContent = locale.save;
   textNodes.gmSaveQuit.textContent = locale.saveQuit;
   textNodes.gmQuit.textContent = locale.quit;
+  renderSettingsText();
 
   textNodes.inventoryTitle.textContent = locale.inventoryTitle;
-  textNodes.inventoryHelper.textContent = locale.inventoryPlaceholder;
+  textNodes.inventoryHelper.textContent = locale.inventoryEmpty;
   textNodes.inventoryBack.textContent = locale.back;
 
   textNodes.infoTitle.textContent = locale.infoTitle;
@@ -1364,6 +1398,26 @@ function openInfoScreen() {
   showScreen('info');
 }
 
+function openSettingsScreen() {
+  renderSettingsText();
+  showScreen('settings');
+}
+
+function saveShowCoordinatesSetting() {
+  localStorage.setItem(STORAGE_SHOW_COORDINATES_KEY, showCoordinates ? '1' : '0');
+}
+
+function applyCoordinateVisibility() {
+  gridBoard.classList.toggle('show-coordinates', showCoordinates);
+}
+
+function toggleShowCoordinates() {
+  showCoordinates = !showCoordinates;
+  saveShowCoordinatesSetting();
+  applyCoordinateVisibility();
+  renderSettingsText();
+}
+
 function returnToGameMenu() {
   renderInfoDetails();
   showScreen('gameMenu');
@@ -1468,7 +1522,13 @@ function buildGrid() {
       tile.dataset.x = String(x);
       tile.dataset.y = String(y);
       tile.setAttribute('role', 'gridcell');
-      tile.setAttribute('aria-label', `Tile ${x + 1}, ${y + 1}`);
+      tile.setAttribute('aria-label', `Tile ${x}, ${y}`);
+
+      const coordinateLabel = document.createElement('span');
+      coordinateLabel.className = 'tile-coordinate-label';
+      coordinateLabel.textContent = `${x},${y}`;
+
+      tile.append(coordinateLabel);
       fragment.append(tile);
     }
   }
@@ -1476,6 +1536,7 @@ function buildGrid() {
   gridBoard.innerHTML = '';
   const npcPiece = npcState ? [createNpcPiece(npcState)] : [];
   gridBoard.append(fragment, playerPiece, ...enemyStates.map((enemy) => createEnemyPiece(enemy)), ...npcPiece);
+  applyCoordinateVisibility();
   updatePlayerPiece();
 }
 
@@ -1765,9 +1826,12 @@ textNodes.openGameMenu.addEventListener('click', openGameMenu);
 textNodes.gmBackToGame.addEventListener('click', goToGameScreen);
 textNodes.gmInventory.addEventListener('click', openInventoryScreen);
 textNodes.gmInfo.addEventListener('click', openInfoScreen);
+textNodes.gmSettings.addEventListener('click', openSettingsScreen);
 textNodes.gmSave.addEventListener('click', handleSaveOnly);
 textNodes.gmSaveQuit.addEventListener('click', handleSaveAndQuit);
 textNodes.gmQuit.addEventListener('click', handleQuitWithoutSaving);
+textNodes.settingsToggleCoordinates.addEventListener('click', toggleShowCoordinates);
+textNodes.settingsBack.addEventListener('click', returnToGameMenu);
 textNodes.inventoryBack.addEventListener('click', returnToGameMenu);
 textNodes.infoBack.addEventListener('click', returnToGameMenu);
 textNodes.victoryContinue.addEventListener('click', handleVictoryContinue);
@@ -1865,6 +1929,8 @@ const savedLanguage = localStorage.getItem(STORAGE_LANGUAGE_KEY);
 if (translations[savedLanguage]) {
   currentLanguage = savedLanguage;
 }
+
+showCoordinates = localStorage.getItem(STORAGE_SHOW_COORDINATES_KEY) === '1';
 
 buildGrid();
 setDocumentLanguage();
