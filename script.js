@@ -27,6 +27,8 @@ const screens = {
   class: document.getElementById('class-screen'),
   game: document.getElementById('game-screen'),
   battle: document.getElementById('battle-screen'),
+  victory: document.getElementById('victory-screen'),
+  defeat: document.getElementById('defeat-screen'),
   gameMenu: document.getElementById('game-menu-screen'),
   inventory: document.getElementById('inventory-screen'),
   info: document.getElementById('info-screen')
@@ -59,7 +61,18 @@ const textNodes = {
   battleTitle: document.getElementById('battle-title'),
   battleEnemyName: document.getElementById('battle-enemy-name'),
   battleEnemyStats: document.getElementById('battle-enemy-stats'),
+  battleEnemyHp: document.getElementById('battle-enemy-hp'),
+  battleEnemyHpFill: document.getElementById('battle-enemy-hp-fill'),
+  battlePlayerName: document.getElementById('battle-player-name'),
+  battlePlayerStats: document.getElementById('battle-player-stats'),
+  battlePlayerHp: document.getElementById('battle-player-hp'),
+  battlePlayerHpFill: document.getElementById('battle-player-hp-fill'),
   battleSubtitle: document.getElementById('battle-subtitle'),
+  victoryTitle: document.getElementById('victory-title'),
+  victoryMessage: document.getElementById('victory-message'),
+  victoryContinue: document.getElementById('victory-continue'),
+  defeatTitle: document.getElementById('defeat-title'),
+  defeatMainMenu: document.getElementById('defeat-main-menu'),
   gameMenuTitle: document.getElementById('game-menu-title'),
   gameMenuStatus: document.getElementById('game-menu-status'),
   gmBackToGame: document.getElementById('gm-back-to-game'),
@@ -118,6 +131,10 @@ const FIRE_SLIME_TEMPLATE = {
   nameKey: 'fireSlime',
   hp: 20,
   attack: 3,
+  drops: {
+    type: 'none',
+    itemKey: null
+  },
   skills: [
     {
       nameKey: 'slimeAttack',
@@ -131,7 +148,14 @@ const FIRE_SLIME_TEMPLATE = {
 const battleState = {
   menu: BATTLE_MENUS.ROOT,
   enemy: null,
-  player: null
+  player: null,
+  resultMessageKey: 'obtainedNothing',
+  resultItemKey: null
+};
+
+const PLAYER_CLASS_STATS = {
+  mage: { hp: 20, attack: 10 },
+  warrior: { hp: 40, attack: 5 }
 };
 
 const translations = {
@@ -158,6 +182,7 @@ const translations = {
     gameplayHelper: 'Tap or click a reachable gray tile to move. Tap the red enemy while next to it to battle.',
     gameplaySlot: 'Slot {number}: {element} • {className}',
     battleTitle: 'Battle',
+    battleStatusPlayer: 'Player',
     fight: 'Fight',
     run: 'Run',
     gameMenu: 'Game Menu',
@@ -175,6 +200,7 @@ const translations = {
     infoSlot: 'Slot: {slot}',
     infoElement: 'Element: {element}',
     infoClass: 'Class: {className}',
+    classLabel: 'Class',
     infoCoordinates: 'Coordinates: ({x}, {y})',
     infoNone: 'None',
     hp: 'HP',
@@ -192,6 +218,14 @@ const translations = {
     offensive: 'Offensive',
     defenders: 'Defenders',
     defendersPlaceholder: 'Defenders menu placeholder.',
+    battleChooseSkill: 'Choose an offensive skill.',
+    battleResultVictory: 'Victory',
+    battleResultDefeat: 'You have been defeated',
+    obtainedItem: 'You have obtained {item}',
+    obtainedNothing: 'You have obtained nothing',
+    continueToGrid: 'Continue',
+    returnToMainMenu: 'Return to Main Menu',
+    noItem: 'nothing',
     skillDamage: 'Damage {percent}%',
     elementLabel: 'Element: {element}',
     nonElemental: 'Non-elemental',
@@ -220,6 +254,7 @@ const translations = {
     gameplayHelper: '到達できる灰色タイルをタップまたはクリックして移動します。',
     gameplaySlot: 'スロット {number}: {element} • {className}',
     battleTitle: 'バトル',
+    battleStatusPlayer: 'プレイヤー',
     fight: 'たたかう',
     run: 'にげる',
     gameMenu: 'ゲームメニュー',
@@ -237,6 +272,7 @@ const translations = {
     infoSlot: 'スロット: {slot}',
     infoElement: '属性: {element}',
     infoClass: 'クラス: {className}',
+    classLabel: 'クラス',
     infoCoordinates: '座標: ({x}, {y})',
     infoNone: 'なし',
     hp: 'HP',
@@ -254,6 +290,14 @@ const translations = {
     offensive: '攻撃',
     defenders: '防御',
     defendersPlaceholder: '防御メニューのプレースホルダーです。',
+    battleChooseSkill: '攻撃スキルを選択してください。',
+    battleResultVictory: '勝利',
+    battleResultDefeat: 'あなたは倒されました',
+    obtainedItem: '{item} を獲得しました',
+    obtainedNothing: '何も獲得しませんでした',
+    continueToGrid: '続ける',
+    returnToMainMenu: 'メインメニューに戻る',
+    noItem: 'なし',
     skillDamage: 'ダメージ {percent}%',
     elementLabel: '属性: {element}',
     nonElemental: '無属性',
@@ -282,6 +326,7 @@ const translations = {
     gameplayHelper: 'Нажмите на достижимую серую клетку, чтобы переместиться.',
     gameplaySlot: 'Слот {number}: {element} • {className}',
     battleTitle: 'Бой',
+    battleStatusPlayer: 'Игрок',
     fight: 'Биться',
     run: 'Бежать',
     gameMenu: 'Меню игры',
@@ -299,6 +344,7 @@ const translations = {
     infoSlot: 'Слот: {slot}',
     infoElement: 'Элемент: {element}',
     infoClass: 'Класс: {className}',
+    classLabel: 'Класс',
     infoCoordinates: 'Координаты: ({x}, {y})',
     infoNone: 'Нет',
     hp: 'HP',
@@ -316,6 +362,14 @@ const translations = {
     offensive: 'Атака',
     defenders: 'Защитники',
     defendersPlaceholder: 'Раздел защитников (заглушка).',
+    battleChooseSkill: 'Выберите атакующий навык.',
+    battleResultVictory: 'Победа',
+    battleResultDefeat: 'Вы были побеждены',
+    obtainedItem: 'Вы получили {item}',
+    obtainedNothing: 'Вы ничего не получили',
+    continueToGrid: 'Продолжить',
+    returnToMainMenu: 'Вернуться в главное меню',
+    noItem: 'ничего',
     skillDamage: 'Урон {percent}%',
     elementLabel: 'Элемент: {element}',
     nonElemental: 'Без элемента',
@@ -344,6 +398,7 @@ const translations = {
     gameplayHelper: 'انقر أو المس مربّعًا رماديًا يمكن الوصول إليه للتحرك. المس العدو الأحمر المجاور لبدء المعركة.',
     gameplaySlot: 'الخانة {number}: {element} • {className}',
     battleTitle: 'معركة',
+    battleStatusPlayer: 'اللاعب',
     fight: 'قتال',
     run: 'هرب',
     gameMenu: 'قائمة اللعبة',
@@ -361,6 +416,7 @@ const translations = {
     infoSlot: 'الخانة: {slot}',
     infoElement: 'العنصر: {element}',
     infoClass: 'الفئة: {className}',
+    classLabel: 'الفئة',
     infoCoordinates: 'الإحداثيات: ({x}, {y})',
     infoNone: 'لا يوجد',
     hp: 'الصحة',
@@ -378,6 +434,14 @@ const translations = {
     offensive: 'هجومي',
     defenders: 'المدافعون',
     defendersPlaceholder: 'هذا عرض تجريبي لقائمة المدافعين.',
+    battleChooseSkill: 'اختر مهارة هجومية.',
+    battleResultVictory: 'نصر',
+    battleResultDefeat: 'لقد هُزمت',
+    obtainedItem: 'لقد حصلت على {item}',
+    obtainedNothing: 'لم تحصل على أي شيء',
+    continueToGrid: 'متابعة',
+    returnToMainMenu: 'العودة إلى القائمة الرئيسية',
+    noItem: 'لا شيء',
     skillDamage: 'الضرر {percent}%',
     elementLabel: 'العنصر: {element}',
     nonElemental: 'غير عنصري',
@@ -559,18 +623,16 @@ function renderInfoDetails() {
 function createEnemyForBattle() {
   return {
     nameKey: FIRE_SLIME_TEMPLATE.nameKey,
+    maxHp: FIRE_SLIME_TEMPLATE.hp,
     hp: FIRE_SLIME_TEMPLATE.hp,
     attack: FIRE_SLIME_TEMPLATE.attack,
+    drops: { ...FIRE_SLIME_TEMPLATE.drops },
     skills: FIRE_SLIME_TEMPLATE.skills.map((skill) => ({ ...skill }))
   };
 }
 
-function getPlayerAttackByClass(className) {
-  if (className === 'mage') {
-    return 4;
-  }
-
-  return 5;
+function getPlayerStatsByClass(className) {
+  return PLAYER_CLASS_STATS[className] || PLAYER_CLASS_STATS.warrior;
 }
 
 function getPlayerOffensiveSkills(className, element) {
@@ -599,12 +661,101 @@ function getPlayerOffensiveSkills(className, element) {
 }
 
 function createPlayerBattleData(slot) {
+  const stats = getPlayerStatsByClass(slot.class);
+
   return {
     class: slot.class,
     element: slot.element,
-    attack: getPlayerAttackByClass(slot.class),
+    maxHp: stats.hp,
+    hp: stats.hp,
+    attack: stats.attack,
     skills: getPlayerOffensiveSkills(slot.class, slot.element)
   };
+}
+
+function clampHp(value) {
+  return Math.max(0, value);
+}
+
+function calculateSkillDamage(attack, multiplier) {
+  return Math.floor(attack * multiplier);
+}
+
+function getHpRatio(currentHp, maxHp) {
+  if (maxHp <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(1, currentHp / maxHp));
+}
+
+function getHpFillColor(ratio) {
+  const hue = Math.round(ratio * 120);
+  return `hsl(${hue} 80% 45%)`;
+}
+
+function updateHpBar(fillNode, currentHp, maxHp) {
+  const ratio = getHpRatio(currentHp, maxHp);
+
+  fillNode.style.width = `${ratio * 100}%`;
+  fillNode.style.backgroundColor = getHpFillColor(ratio);
+}
+
+function resolveDropMessage(enemy) {
+  if (!enemy?.drops || enemy.drops.type === 'none' || !enemy.drops.itemKey) {
+    return { key: 'obtainedNothing', itemKey: null };
+  }
+
+  return { key: 'obtainedItem', itemKey: enemy.drops.itemKey };
+}
+
+function endBattleVictory() {
+  const dropResult = resolveDropMessage(battleState.enemy);
+
+  battleState.resultMessageKey = dropResult.key;
+  battleState.resultItemKey = dropResult.itemKey;
+  battleState.menu = BATTLE_MENUS.ROOT;
+
+  renderVictoryScreen();
+  showScreen('victory');
+}
+
+function endBattleDefeat() {
+  battleState.menu = BATTLE_MENUS.ROOT;
+  renderDefeatScreen();
+  showScreen('defeat');
+}
+
+function applyPlayerSkill(skillIndex) {
+  const enemy = battleState.enemy;
+  const player = battleState.player;
+  const skill = player?.skills?.[skillIndex];
+
+  if (!enemy || !player || !skill) {
+    return;
+  }
+
+  const playerDamage = calculateSkillDamage(player.attack, skill.damageMultiplier);
+  enemy.hp = clampHp(enemy.hp - playerDamage);
+
+  if (enemy.hp <= 0) {
+    renderBattleUI();
+    endBattleVictory();
+    return;
+  }
+
+  const enemySkill = enemy.skills[0];
+  const enemyDamage = calculateSkillDamage(enemy.attack, enemySkill.damageMultiplier);
+  player.hp = clampHp(player.hp - enemyDamage);
+
+  if (player.hp <= 0) {
+    renderBattleUI();
+    endBattleDefeat();
+    return;
+  }
+
+  battleState.menu = BATTLE_MENUS.ROOT;
+  renderBattleUI();
 }
 
 function getBattleMenuOptions() {
@@ -650,16 +801,29 @@ function renderBattleUI() {
   if (!enemy || !player) {
     textNodes.battleEnemyName.textContent = '';
     textNodes.battleEnemyStats.textContent = '';
+    textNodes.battleEnemyHp.textContent = '';
+    textNodes.battlePlayerName.textContent = '';
+    textNodes.battlePlayerStats.textContent = '';
+    textNodes.battlePlayerHp.textContent = '';
+    updateHpBar(textNodes.battleEnemyHpFill, 0, 1);
+    updateHpBar(textNodes.battlePlayerHpFill, 0, 1);
     textNodes.battleSubtitle.textContent = '';
     battleOptionsList.innerHTML = '';
     return;
   }
 
   textNodes.battleEnemyName.textContent = locale[enemy.nameKey];
-  textNodes.battleEnemyStats.textContent = `${locale.hp}: ${enemy.hp} • ${locale.attack}: ${enemy.attack}`;
+  textNodes.battleEnemyStats.textContent = `${locale.attack}: ${enemy.attack}`;
+  textNodes.battleEnemyHp.textContent = `${locale.hp}: ${enemy.hp} / ${enemy.maxHp}`;
+  textNodes.battlePlayerName.textContent = locale.battleStatusPlayer;
+  textNodes.battlePlayerStats.textContent = `${locale.classLabel}: ${locale[player.class]} • ${locale.attack}: ${player.attack}`;
+  textNodes.battlePlayerHp.textContent = `${locale.hp}: ${player.hp} / ${player.maxHp}`;
+
+  updateHpBar(textNodes.battleEnemyHpFill, enemy.hp, enemy.maxHp);
+  updateHpBar(textNodes.battlePlayerHpFill, player.hp, player.maxHp);
 
   if (battleState.menu === BATTLE_MENUS.OFFENSIVE) {
-    textNodes.battleSubtitle.textContent = locale.offensive;
+    textNodes.battleSubtitle.textContent = locale.battleChooseSkill;
   } else if (battleState.menu === BATTLE_MENUS.DEFENDERS) {
     textNodes.battleSubtitle.textContent = locale.defendersPlaceholder;
   } else {
@@ -669,22 +833,23 @@ function renderBattleUI() {
   battleOptionsList.innerHTML = '';
 
   if (battleState.menu === BATTLE_MENUS.OFFENSIVE) {
-    player.skills.filter((skill) => skill.category === 'offensive').forEach((skill) => {
+    player.skills.filter((skill) => skill.category === 'offensive').forEach((skill, skillIndex) => {
       const li = document.createElement('li');
-      const text = document.createElement('p');
+      const button = document.createElement('button');
       const name = document.createElement('span');
       const meta = document.createElement('span');
 
-      text.className = 'menu-option';
-      text.setAttribute('aria-live', 'polite');
+      button.type = 'button';
+      button.className = 'menu-option';
+      button.dataset.action = `skill:${skillIndex}`;
       name.className = 'battle-skill-name';
       meta.className = 'battle-skill-meta';
 
       name.textContent = locale[skill.nameKey];
       meta.textContent = `${formatText(locale.skillDamage, { percent: skill.damageMultiplier * 100 })} • ${formatText(locale.elementLabel, { element: getSkillElementLabel(skill, locale) })}`;
 
-      text.append(name, meta);
-      li.append(text);
+      button.append(name, meta);
+      li.append(button);
       battleOptionsList.append(li);
     });
   }
@@ -701,6 +866,29 @@ function renderBattleUI() {
     li.append(button);
     battleOptionsList.append(li);
   });
+}
+
+function renderVictoryScreen() {
+  const locale = getLocale();
+
+  textNodes.victoryTitle.textContent = locale.battleResultVictory;
+
+  if (battleState.resultMessageKey === 'obtainedItem' && battleState.resultItemKey) {
+    textNodes.victoryMessage.textContent = formatText(locale.obtainedItem, {
+      item: locale[battleState.resultItemKey] || battleState.resultItemKey
+    });
+  } else {
+    textNodes.victoryMessage.textContent = locale.obtainedNothing;
+  }
+
+  textNodes.victoryContinue.textContent = locale.continueToGrid;
+}
+
+function renderDefeatScreen() {
+  const locale = getLocale();
+
+  textNodes.defeatTitle.textContent = locale.battleResultDefeat;
+  textNodes.defeatMainMenu.textContent = locale.returnToMainMenu;
 }
 
 function renderStaticText() {
@@ -722,6 +910,10 @@ function renderStaticText() {
 
   textNodes.openGameMenu.textContent = locale.gameMenu;
   textNodes.battleTitle.textContent = locale.battleTitle;
+  textNodes.victoryTitle.textContent = locale.battleResultVictory;
+  textNodes.victoryContinue.textContent = locale.continueToGrid;
+  textNodes.defeatTitle.textContent = locale.battleResultDefeat;
+  textNodes.defeatMainMenu.textContent = locale.returnToMainMenu;
   textNodes.gameMenuTitle.textContent = locale.gameMenu;
   textNodes.gmBackToGame.textContent = locale.backToGame;
   textNodes.gmInventory.textContent = locale.inventory;
@@ -753,6 +945,8 @@ function renderStaticText() {
   renderGameplayInfo();
   renderInfoDetails();
   renderBattleUI();
+  renderVictoryScreen();
+  renderDefeatScreen();
 }
 
 function renderSaveSlots() {
@@ -1099,6 +1293,14 @@ function runFromBattle() {
 
 
 function handleBattleAction(action) {
+  if (action.startsWith('skill:')) {
+    const skillIndex = Number(action.split(':')[1]);
+    if (Number.isInteger(skillIndex)) {
+      applyPlayerSkill(skillIndex);
+    }
+    return;
+  }
+
   if (action === 'run') {
     runFromBattle();
     return;
@@ -1117,6 +1319,24 @@ function handleBattleAction(action) {
   }
 
   renderBattleUI();
+}
+
+function clearBattleState() {
+  battleState.menu = BATTLE_MENUS.ROOT;
+  battleState.enemy = null;
+  battleState.player = null;
+}
+
+function handleVictoryContinue() {
+  clearBattleState();
+  renderBattleUI();
+  goToGameScreen();
+}
+
+function handleDefeatReturnToMenu() {
+  clearBattleState();
+  renderBattleUI();
+  goToMenuScreen();
 }
 
 function animationStep(timestamp) {
@@ -1213,6 +1433,8 @@ textNodes.gmSaveQuit.addEventListener('click', handleSaveAndQuit);
 textNodes.gmQuit.addEventListener('click', handleQuitWithoutSaving);
 textNodes.inventoryBack.addEventListener('click', returnToGameMenu);
 textNodes.infoBack.addEventListener('click', returnToGameMenu);
+textNodes.victoryContinue.addEventListener('click', handleVictoryContinue);
+textNodes.defeatMainMenu.addEventListener('click', handleDefeatReturnToMenu);
 battleOptionsList.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-action]');
   if (!button || screens.battle.hidden) {

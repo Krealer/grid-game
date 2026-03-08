@@ -205,6 +205,35 @@ h1 {
   font-weight: 600;
 }
 
+.hp-block {
+  margin-top: 0.55rem;
+}
+
+.hp-label {
+  font-size: 0.92rem;
+}
+
+.hp-bar-track {
+  margin-top: 0.35rem;
+  width: 100%;
+  height: 0.78rem;
+  border-radius: 999px;
+  background: #1d1d1d;
+  border: 1px solid #313131;
+  overflow: hidden;
+}
+
+.hp-bar-fill {
+  width: 100%;
+  height: 100%;
+  background: hsl(120 80% 45%);
+  transition: width 180ms ease, background-color 180ms ease;
+}
+
+.battle-status-player {
+  margin-top: 0.9rem;
+}
+
 .battle-subtitle {
   min-height: 1.5rem;
 }
@@ -291,6 +320,10 @@ html[dir='rtl'] #class-back {
     width: min(34vw, 112px);
     height: min(34vw, 112px);
   }
+
+  .hp-bar-track {
+    height: 0.72rem;
+  }
 }
 
 
@@ -313,39 +346,7 @@ html[dir='rtl'] #class-back {
   }
 
   
-.battle-status {
-  margin-top: 0.85rem;
-  text-align: start;
-}
-
-.battle-text {
-  margin: 0;
-  font-weight: 700;
-}
-
-.battle-text-muted {
-  margin-top: 0.35rem;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.battle-subtitle {
-  min-height: 1.5rem;
-}
-
-.battle-skill-name {
-  display: block;
-}
-
-.battle-skill-meta {
-  display: block;
-  margin-top: 0.2rem;
-  color: var(--muted);
-  font-size: 0.88em;
-  font-weight: 600;
-}
-
-.battle-arena {
+  .battle-arena {
     min-height: 220px;
     padding: 1.25rem 1.5rem;
   }
@@ -355,4 +356,3 @@ html[dir='rtl'] #class-back {
     height: min(20vw, 150px);
   }
 }
-
