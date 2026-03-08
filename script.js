@@ -57,8 +57,9 @@ const textNodes = {
   gameHelper: document.getElementById('game-helper'),
   openGameMenu: document.getElementById('open-game-menu'),
   battleTitle: document.getElementById('battle-title'),
-  battleFight: document.getElementById('battle-fight'),
-  battleRun: document.getElementById('battle-run'),
+  battleEnemyName: document.getElementById('battle-enemy-name'),
+  battleEnemyStats: document.getElementById('battle-enemy-stats'),
+  battleSubtitle: document.getElementById('battle-subtitle'),
   gameMenuTitle: document.getElementById('game-menu-title'),
   gameMenuStatus: document.getElementById('game-menu-status'),
   gmBackToGame: document.getElementById('gm-back-to-game'),
@@ -77,6 +78,7 @@ const textNodes = {
 };
 
 const saveSlotsList = document.getElementById('save-slots');
+const battleOptionsList = document.getElementById('battle-options-list');
 
 const STORAGE_LANGUAGE_KEY = 'preferredLanguage';
 const STORAGE_SAVE_KEY = 'gridGameSaveSlots';
@@ -104,6 +106,33 @@ playerPiece.className = 'player-piece';
 const enemyPiece = document.createElement('div');
 enemyPiece.className = 'enemy-piece';
 gridBoard.append(playerPiece, enemyPiece);
+
+const BATTLE_MENUS = {
+  ROOT: 'root',
+  FIGHT_CATEGORIES: 'fightCategories',
+  OFFENSIVE: 'offensive',
+  DEFENDERS: 'defenders'
+};
+
+const FIRE_SLIME_TEMPLATE = {
+  nameKey: 'fireSlime',
+  hp: 20,
+  attack: 3,
+  skills: [
+    {
+      nameKey: 'slimeAttack',
+      damageMultiplier: 1,
+      elementType: 'none',
+      category: 'offensive'
+    }
+  ]
+};
+
+const battleState = {
+  menu: BATTLE_MENUS.ROOT,
+  enemy: null,
+  player: null
+};
 
 const translations = {
   en: {
@@ -148,6 +177,24 @@ const translations = {
     infoClass: 'Class: {className}',
     infoCoordinates: 'Coordinates: ({x}, {y})',
     infoNone: 'None',
+    hp: 'HP',
+    attack: 'Attack',
+    fireSlime: 'Fire Slime',
+    slimeAttack: 'Slime Attack',
+    swordSlash: 'Sword Slash',
+    stickBonk: 'Stick Bonk',
+    fireSlash: 'Fire Slash',
+    waterSlash: 'Water Slash',
+    earthSlash: 'Earth Slash',
+    fireBall: 'Fire Ball',
+    waterBall: 'Water Ball',
+    earthBall: 'Earth Ball',
+    offensive: 'Offensive',
+    defenders: 'Defenders',
+    defendersPlaceholder: 'Defenders menu placeholder.',
+    skillDamage: 'Damage {percent}%',
+    elementLabel: 'Element: {element}',
+    nonElemental: 'Non-elemental',
     dir: 'ltr'
   },
   ja: {
@@ -192,6 +239,24 @@ const translations = {
     infoClass: 'クラス: {className}',
     infoCoordinates: '座標: ({x}, {y})',
     infoNone: 'なし',
+    hp: 'HP',
+    attack: '攻撃',
+    fireSlime: 'ファイアスライム',
+    slimeAttack: 'スライムアタック',
+    swordSlash: 'ソードスラッシュ',
+    stickBonk: 'スティックボンク',
+    fireSlash: 'ファイアスラッシュ',
+    waterSlash: 'ウォータースラッシュ',
+    earthSlash: 'アーススラッシュ',
+    fireBall: 'ファイアボール',
+    waterBall: 'ウォーターボール',
+    earthBall: 'アースボール',
+    offensive: '攻撃',
+    defenders: '防御',
+    defendersPlaceholder: '防御メニューのプレースホルダーです。',
+    skillDamage: 'ダメージ {percent}%',
+    elementLabel: '属性: {element}',
+    nonElemental: '無属性',
     dir: 'ltr'
   },
   ru: {
@@ -236,6 +301,24 @@ const translations = {
     infoClass: 'Класс: {className}',
     infoCoordinates: 'Координаты: ({x}, {y})',
     infoNone: 'Нет',
+    hp: 'HP',
+    attack: 'Атака',
+    fireSlime: 'Огненный слизень',
+    slimeAttack: 'Атака слизня',
+    swordSlash: 'Удар мечом',
+    stickBonk: 'Удар палкой',
+    fireSlash: 'Огненный разрез',
+    waterSlash: 'Водный разрез',
+    earthSlash: 'Земляной разрез',
+    fireBall: 'Огненный шар',
+    waterBall: 'Водный шар',
+    earthBall: 'Земляной шар',
+    offensive: 'Атака',
+    defenders: 'Защитники',
+    defendersPlaceholder: 'Раздел защитников (заглушка).',
+    skillDamage: 'Урон {percent}%',
+    elementLabel: 'Элемент: {element}',
+    nonElemental: 'Без элемента',
     dir: 'ltr'
   },
   ar: {
@@ -280,6 +363,24 @@ const translations = {
     infoClass: 'الفئة: {className}',
     infoCoordinates: 'الإحداثيات: ({x}, {y})',
     infoNone: 'لا يوجد',
+    hp: 'الصحة',
+    attack: 'الهجوم',
+    fireSlime: 'سلايم النار',
+    slimeAttack: 'هجوم السلايم',
+    swordSlash: 'ضربة السيف',
+    stickBonk: 'ضربة العصا',
+    fireSlash: 'ضربة النار',
+    waterSlash: 'ضربة الماء',
+    earthSlash: 'ضربة الأرض',
+    fireBall: 'كرة النار',
+    waterBall: 'كرة الماء',
+    earthBall: 'كرة الأرض',
+    offensive: 'هجومي',
+    defenders: 'المدافعون',
+    defendersPlaceholder: 'هذا عرض تجريبي لقائمة المدافعين.',
+    skillDamage: 'الضرر {percent}%',
+    elementLabel: 'العنصر: {element}',
+    nonElemental: 'غير عنصري',
     dir: 'rtl'
   }
 };
@@ -454,6 +555,154 @@ function renderInfoDetails() {
   textNodes.infoDetails.textContent = lines.join('\n');
 }
 
+
+function createEnemyForBattle() {
+  return {
+    nameKey: FIRE_SLIME_TEMPLATE.nameKey,
+    hp: FIRE_SLIME_TEMPLATE.hp,
+    attack: FIRE_SLIME_TEMPLATE.attack,
+    skills: FIRE_SLIME_TEMPLATE.skills.map((skill) => ({ ...skill }))
+  };
+}
+
+function getPlayerAttackByClass(className) {
+  if (className === 'mage') {
+    return 4;
+  }
+
+  return 5;
+}
+
+function getPlayerOffensiveSkills(className, element) {
+  const baseSkillByClass = {
+    warrior: { nameKey: 'swordSlash', damageMultiplier: 1, elementType: 'none', category: 'offensive' },
+    mage: { nameKey: 'stickBonk', damageMultiplier: 0.25, elementType: 'none', category: 'offensive' }
+  };
+
+  const elementalSkills = {
+    warrior: {
+      fire: { nameKey: 'fireSlash', damageMultiplier: 1, elementType: 'fire', category: 'offensive' },
+      water: { nameKey: 'waterSlash', damageMultiplier: 1, elementType: 'water', category: 'offensive' },
+      earth: { nameKey: 'earthSlash', damageMultiplier: 1, elementType: 'earth', category: 'offensive' }
+    },
+    mage: {
+      fire: { nameKey: 'fireBall', damageMultiplier: 2, elementType: 'fire', category: 'offensive' },
+      water: { nameKey: 'waterBall', damageMultiplier: 2, elementType: 'water', category: 'offensive' },
+      earth: { nameKey: 'earthBall', damageMultiplier: 2, elementType: 'earth', category: 'offensive' }
+    }
+  };
+
+  const baseSkill = baseSkillByClass[className];
+  const elementalSkill = elementalSkills[className]?.[element];
+
+  return [baseSkill, elementalSkill].filter(Boolean).map((skill) => ({ ...skill }));
+}
+
+function createPlayerBattleData(slot) {
+  return {
+    class: slot.class,
+    element: slot.element,
+    attack: getPlayerAttackByClass(slot.class),
+    skills: getPlayerOffensiveSkills(slot.class, slot.element)
+  };
+}
+
+function getBattleMenuOptions() {
+  if (battleState.menu === BATTLE_MENUS.ROOT) {
+    return [
+      { key: 'fight', action: 'openFightCategories' },
+      { key: 'run', action: 'run' }
+    ];
+  }
+
+  if (battleState.menu === BATTLE_MENUS.FIGHT_CATEGORIES) {
+    return [
+      { key: 'offensive', action: 'openOffensive' },
+      { key: 'defenders', action: 'openDefenders' },
+      { key: 'back', action: 'backToRoot' }
+    ];
+  }
+
+  if (battleState.menu === BATTLE_MENUS.OFFENSIVE || battleState.menu === BATTLE_MENUS.DEFENDERS) {
+    return [{ key: 'back', action: 'backToCategories' }];
+  }
+
+  return [];
+}
+
+function getSkillElementLabel(skill, locale) {
+  if (skill.elementType === 'none') {
+    return locale.nonElemental;
+  }
+
+  return locale[skill.elementType];
+}
+
+function renderBattleUI() {
+  if (!textNodes.battleEnemyName) {
+    return;
+  }
+
+  const locale = getLocale();
+  const enemy = battleState.enemy;
+  const player = battleState.player;
+
+  if (!enemy || !player) {
+    textNodes.battleEnemyName.textContent = '';
+    textNodes.battleEnemyStats.textContent = '';
+    textNodes.battleSubtitle.textContent = '';
+    battleOptionsList.innerHTML = '';
+    return;
+  }
+
+  textNodes.battleEnemyName.textContent = locale[enemy.nameKey];
+  textNodes.battleEnemyStats.textContent = `${locale.hp}: ${enemy.hp} • ${locale.attack}: ${enemy.attack}`;
+
+  if (battleState.menu === BATTLE_MENUS.OFFENSIVE) {
+    textNodes.battleSubtitle.textContent = locale.offensive;
+  } else if (battleState.menu === BATTLE_MENUS.DEFENDERS) {
+    textNodes.battleSubtitle.textContent = locale.defendersPlaceholder;
+  } else {
+    textNodes.battleSubtitle.textContent = '';
+  }
+
+  battleOptionsList.innerHTML = '';
+
+  if (battleState.menu === BATTLE_MENUS.OFFENSIVE) {
+    player.skills.filter((skill) => skill.category === 'offensive').forEach((skill) => {
+      const li = document.createElement('li');
+      const text = document.createElement('p');
+      const name = document.createElement('span');
+      const meta = document.createElement('span');
+
+      text.className = 'menu-option';
+      text.setAttribute('aria-live', 'polite');
+      name.className = 'battle-skill-name';
+      meta.className = 'battle-skill-meta';
+
+      name.textContent = locale[skill.nameKey];
+      meta.textContent = `${formatText(locale.skillDamage, { percent: skill.damageMultiplier * 100 })} • ${formatText(locale.elementLabel, { element: getSkillElementLabel(skill, locale) })}`;
+
+      text.append(name, meta);
+      li.append(text);
+      battleOptionsList.append(li);
+    });
+  }
+
+  getBattleMenuOptions().forEach((option) => {
+    const li = document.createElement('li');
+    const button = document.createElement('button');
+
+    button.type = 'button';
+    button.className = 'menu-option';
+    button.dataset.action = option.action;
+    button.textContent = locale[option.key];
+
+    li.append(button);
+    battleOptionsList.append(li);
+  });
+}
+
 function renderStaticText() {
   const locale = getLocale();
 
@@ -473,8 +722,6 @@ function renderStaticText() {
 
   textNodes.openGameMenu.textContent = locale.gameMenu;
   textNodes.battleTitle.textContent = locale.battleTitle;
-  textNodes.battleFight.textContent = locale.fight;
-  textNodes.battleRun.textContent = locale.run;
   textNodes.gameMenuTitle.textContent = locale.gameMenu;
   textNodes.gmBackToGame.textContent = locale.backToGame;
   textNodes.gmInventory.textContent = locale.inventory;
@@ -505,6 +752,7 @@ function renderStaticText() {
   renderClassConfirmation();
   renderGameplayInfo();
   renderInfoDetails();
+  renderBattleUI();
 }
 
 function renderSaveSlots() {
@@ -814,6 +1062,17 @@ function isOrthogonallyAdjacentToEnemy() {
 }
 
 function enterBattleMode() {
+  const slot = currentSlotId ? getSlotById(currentSlotId) : null;
+
+  if (!slot || !slot.class || !slot.element) {
+    return;
+  }
+
+  battleState.menu = BATTLE_MENUS.ROOT;
+  battleState.enemy = createEnemyForBattle();
+  battleState.player = createPlayerBattleData(slot);
+
+  renderBattleUI();
   showScreen('battle');
 }
 
@@ -831,7 +1090,33 @@ function tryInteractWithEnemy(tileX, tileY) {
 }
 
 function runFromBattle() {
+  battleState.menu = BATTLE_MENUS.ROOT;
+  battleState.enemy = null;
+  battleState.player = null;
+  renderBattleUI();
   goToGameScreen();
+}
+
+
+function handleBattleAction(action) {
+  if (action === 'run') {
+    runFromBattle();
+    return;
+  }
+
+  if (action === 'openFightCategories') {
+    battleState.menu = BATTLE_MENUS.FIGHT_CATEGORIES;
+  } else if (action === 'openOffensive') {
+    battleState.menu = BATTLE_MENUS.OFFENSIVE;
+  } else if (action === 'openDefenders') {
+    battleState.menu = BATTLE_MENUS.DEFENDERS;
+  } else if (action === 'backToRoot') {
+    battleState.menu = BATTLE_MENUS.ROOT;
+  } else if (action === 'backToCategories') {
+    battleState.menu = BATTLE_MENUS.FIGHT_CATEGORIES;
+  }
+
+  renderBattleUI();
 }
 
 function animationStep(timestamp) {
@@ -928,8 +1213,14 @@ textNodes.gmSaveQuit.addEventListener('click', handleSaveAndQuit);
 textNodes.gmQuit.addEventListener('click', handleQuitWithoutSaving);
 textNodes.inventoryBack.addEventListener('click', returnToGameMenu);
 textNodes.infoBack.addEventListener('click', returnToGameMenu);
-textNodes.battleRun.addEventListener('click', runFromBattle);
-textNodes.battleFight.addEventListener('click', () => {});
+battleOptionsList.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-action]');
+  if (!button || screens.battle.hidden) {
+    return;
+  }
+
+  handleBattleAction(button.dataset.action);
+});
 
 saveSlotsList.addEventListener('click', (event) => {
   const button = event.target.closest('.save-slot');
