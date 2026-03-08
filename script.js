@@ -35,6 +35,7 @@ const screens = {
   language: document.getElementById('language-screen'),
   menu: document.getElementById('menu-screen'),
   save: document.getElementById('save-screen'),
+  deleteConfirm: document.getElementById('delete-confirm-screen'),
   element: document.getElementById('element-screen'),
   class: document.getElementById('class-screen'),
   game: document.getElementById('game-screen'),
@@ -63,6 +64,9 @@ const textNodes = {
   saveTitle: document.getElementById('save-title'),
   saveSubtitle: document.getElementById('save-subtitle'),
   saveBack: document.getElementById('save-back'),
+  deleteConfirmMessage: document.getElementById('delete-confirm-message'),
+  deleteConfirmYes: document.getElementById('delete-confirm-yes'),
+  deleteConfirmNo: document.getElementById('delete-confirm-no'),
   elementTitle: document.getElementById('element-title'),
   elementBack: document.getElementById('element-back'),
   classTitle: document.getElementById('class-title'),
@@ -126,6 +130,7 @@ let currentLanguage = 'en';
 let currentSlotId = null;
 let gameMenuStatusKey = '';
 let showCoordinates = false;
+let pendingDeleteSlotId = null;
 
 const playerState = {
   tileX: 0,
@@ -210,6 +215,10 @@ const translations = {
     saveSubtitle: 'Choose a save slot.',
     slotLabel: 'Slot {number}',
     newGame: 'New Game',
+    deleteSlot: 'X',
+    deleteSaveConfirm: 'Are you sure you want to delete this save data?',
+    yes: 'Yes',
+    no: 'No',
     elementQuestion: 'What element do you want to choose?',
     fire: 'Fire',
     water: 'Water',
@@ -297,6 +306,10 @@ const translations = {
     saveSubtitle: 'セーブスロットを選んでください。',
     slotLabel: 'スロット {number}',
     newGame: 'ニューゲーム',
+    deleteSlot: 'X',
+    deleteSaveConfirm: 'このセーブデータを削除してもよろしいですか？',
+    yes: 'はい',
+    no: 'いいえ',
     elementQuestion: 'どの属性を選びますか？',
     fire: '火',
     water: '水',
@@ -384,6 +397,10 @@ const translations = {
     saveSubtitle: 'Выберите слот сохранения.',
     slotLabel: 'Слот {number}',
     newGame: 'Новая игра',
+    deleteSlot: 'X',
+    deleteSaveConfirm: 'Вы уверены, что хотите удалить эти данные сохранения?',
+    yes: 'Да',
+    no: 'Нет',
     elementQuestion: 'Какой элемент вы хотите выбрать?',
     fire: 'Огонь',
     water: 'Вода',
@@ -471,6 +488,10 @@ const translations = {
     saveSubtitle: 'اختر خانة حفظ.',
     slotLabel: 'الخانة {number}',
     newGame: 'لعبة جديدة',
+    deleteSlot: 'X',
+    deleteSaveConfirm: 'هل أنت متأكد أنك تريد حذف بيانات الحفظ هذه؟',
+    yes: 'نعم',
+    no: 'لا',
     elementQuestion: 'ما العنصر الذي تريد اختياره؟',
     fire: 'النار',
     water: 'الماء',
@@ -669,7 +690,8 @@ function getDefaultSlots() {
     playerData: {
       x: 0,
       y: 0
-    }
+    },
+    defeatedEnemyIds: []
   }));
 }
 
@@ -682,6 +704,31 @@ function normalizePosition(playerData) {
   }
 
   return { x, y };
+}
+
+
+
+function normalizeDefeatedEnemyIds(defeatedEnemyIds) {
+  if (!Array.isArray(defeatedEnemyIds)) {
+    return [];
+  }
+
+  const validEnemyIds = new Set(ENEMY_STARTS.map((enemy) => enemy.id));
+  const uniqueIds = new Set();
+
+  defeatedEnemyIds.forEach((enemyId) => {
+    if (typeof enemyId === 'string' && validEnemyIds.has(enemyId)) {
+      uniqueIds.add(enemyId);
+    }
+  });
+
+  return [...uniqueIds];
+}
+
+function createEnemyStatesFromDefeatedIds(defeatedEnemyIds) {
+  const defeated = new Set(normalizeDefeatedEnemyIds(defeatedEnemyIds));
+
+  return createInitialEnemyStates().filter((enemy) => !defeated.has(enemy.id));
 }
 
 function loadSlots() {
@@ -702,7 +749,8 @@ function loadSlots() {
       slotId: index + 1,
       element: typeof slot.element === 'string' ? slot.element : null,
       class: typeof slot.class === 'string' ? slot.class : null,
-      playerData: normalizePosition(slot.playerData)
+      playerData: normalizePosition(slot.playerData),
+      defeatedEnemyIds: normalizeDefeatedEnemyIds(slot.defeatedEnemyIds)
     }));
   } catch (_error) {
     return getDefaultSlots();
@@ -731,7 +779,10 @@ function updateSlot(slotId, data) {
     playerData: normalizePosition({
       ...slots[slotIndex].playerData,
       ...(data.playerData || {})
-    })
+    }),
+    defeatedEnemyIds: normalizeDefeatedEnemyIds(
+      data.defeatedEnemyIds !== undefined ? data.defeatedEnemyIds : slots[slotIndex].defeatedEnemyIds
+    )
   };
 
   saveSlots(slots);
@@ -1240,6 +1291,9 @@ function renderStaticText() {
   textNodes.elementBack.textContent = locale.back;
   textNodes.classTitle.textContent = locale.classQuestion;
   textNodes.classBack.textContent = locale.back;
+  textNodes.deleteConfirmMessage.textContent = locale.deleteSaveConfirm;
+  textNodes.deleteConfirmYes.textContent = locale.yes;
+  textNodes.deleteConfirmNo.textContent = locale.no;
 
   textNodes.openGameMenu.textContent = locale.gameMenu;
   textNodes.battleTitle.textContent = locale.battleTitle;
@@ -1292,9 +1346,14 @@ function renderSaveSlots() {
 
   slots.forEach((slot) => {
     const item = document.createElement('li');
+    const slotRow = document.createElement('div');
     const button = document.createElement('button');
     const label = document.createElement('span');
     const value = document.createElement('span');
+    const deleteButton = document.createElement('button');
+    const filledSlot = hasExistingSave(slot);
+
+    slotRow.className = 'save-slot-row';
 
     button.type = 'button';
     button.className = 'save-slot';
@@ -1304,12 +1363,19 @@ function renderSaveSlots() {
     label.textContent = formatText(locale.slotLabel, { number: slot.slotId });
 
     value.className = 'slot-value';
-    value.textContent = hasExistingSave(slot)
+    value.textContent = filledSlot
       ? `${locale[slot.element]} • ${locale[slot.class]}`
       : locale.newGame;
 
+    deleteButton.type = 'button';
+    deleteButton.className = 'save-slot-delete';
+    deleteButton.dataset.deleteSlotId = String(slot.slotId);
+    deleteButton.textContent = locale.deleteSlot;
+    deleteButton.disabled = !filledSlot;
+
     button.append(label, value);
-    item.append(button);
+    slotRow.append(button, deleteButton);
+    item.append(slotRow);
     saveSlotsList.append(item);
   });
 }
@@ -1463,12 +1529,48 @@ function writeCurrentGameToSlot() {
     playerData: {
       x: pos.x,
       y: pos.y
-    }
+    },
+    defeatedEnemyIds: getDefeatedEnemyIdsFromCurrentState()
   });
 
   renderSaveSlots();
   renderInfoDetails();
   return true;
+}
+
+function getDefeatedEnemyIdsFromCurrentState() {
+  return ENEMY_STARTS
+    .filter((enemyStart) => !enemyStates.some((enemy) => enemy.id === enemyStart.id))
+    .map((enemy) => enemy.id);
+}
+
+function deleteSlotProgress(slotId) {
+  updateSlot(slotId, {
+    element: null,
+    class: null,
+    playerData: { x: 0, y: 0 },
+    defeatedEnemyIds: []
+  });
+}
+
+function openDeleteConfirmation(slotId) {
+  pendingDeleteSlotId = slotId;
+  showScreen('deleteConfirm');
+}
+
+function cancelDeleteConfirmation() {
+  pendingDeleteSlotId = null;
+  showScreen('save');
+}
+
+function confirmDeleteSlot() {
+  if (Number.isInteger(pendingDeleteSlotId)) {
+    deleteSlotProgress(pendingDeleteSlotId);
+  }
+
+  pendingDeleteSlotId = null;
+  renderSaveSlots();
+  showScreen('save');
 }
 
 function handleSaveOnly() {
@@ -1856,6 +1958,8 @@ textNodes.settingsToggleCoordinates.addEventListener('click', toggleShowCoordina
 textNodes.settingsBack.addEventListener('click', returnToGameMenu);
 textNodes.inventoryBack.addEventListener('click', returnToGameMenu);
 textNodes.infoBack.addEventListener('click', returnToGameMenu);
+textNodes.deleteConfirmYes.addEventListener('click', confirmDeleteSlot);
+textNodes.deleteConfirmNo.addEventListener('click', cancelDeleteConfirmation);
 textNodes.victoryContinue.addEventListener('click', handleVictoryContinue);
 textNodes.defeatMainMenu.addEventListener('click', handleDefeatReturnToMenu);
 battleOptionsList.addEventListener('click', (event) => {
@@ -1868,6 +1972,23 @@ battleOptionsList.addEventListener('click', (event) => {
 });
 
 saveSlotsList.addEventListener('click', (event) => {
+  const deleteButton = event.target.closest('.save-slot-delete');
+  if (deleteButton) {
+    event.stopPropagation();
+
+    if (deleteButton.disabled) {
+      return;
+    }
+
+    const slotId = Number(deleteButton.dataset.deleteSlotId);
+    if (!Number.isInteger(slotId)) {
+      return;
+    }
+
+    openDeleteConfirmation(slotId);
+    return;
+  }
+
   const button = event.target.closest('.save-slot');
   if (!button) {
     return;
@@ -1884,13 +2005,13 @@ saveSlotsList.addEventListener('click', (event) => {
   }
 
   if (!hasExistingSave(slot)) {
-    updateSlot(slotId, { element: null, class: null, playerData: { x: 0, y: 0 } });
+    deleteSlotProgress(slotId);
     goToElementScreen(slotId);
     return;
   }
 
   currentSlotId = slotId;
-  enemyStates = createInitialEnemyStates();
+  enemyStates = createEnemyStatesFromDefeatedIds(slot.defeatedEnemyIds);
   npcState = createNpcState(enemyStates);
   buildGrid();
   const savedPos = normalizePosition(slot.playerData);
@@ -1904,7 +2025,7 @@ elementButtons.forEach((button) => {
       return;
     }
 
-    updateSlot(currentSlotId, { element: button.dataset.element, class: null, playerData: { x: 0, y: 0 } });
+    updateSlot(currentSlotId, { element: button.dataset.element, class: null, playerData: { x: 0, y: 0 }, defeatedEnemyIds: [] });
     goToClassScreen();
   });
 });
@@ -1917,7 +2038,8 @@ classButtons.forEach((button) => {
 
     updateSlot(currentSlotId, {
       class: button.dataset.class,
-      playerData: { x: 0, y: 0 }
+      playerData: { x: 0, y: 0 },
+      defeatedEnemyIds: []
     });
 
     const slot = getSlotById(currentSlotId);

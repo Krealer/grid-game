@@ -65,6 +65,7 @@ h1 {
 .menu-option,
 .back-button,
 .save-slot,
+.save-slot-delete,
 .grid-tile {
   width: 100%;
   border: 1px solid var(--line);
@@ -86,10 +87,30 @@ h1 {
   margin-top: 0.75rem;
 }
 
+.save-slot-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.55rem;
+  align-items: stretch;
+}
+
 .save-slot {
   text-align: start;
   display: grid;
   gap: 0.25rem;
+}
+
+.save-slot-delete {
+  width: 2.7rem;
+  min-width: 2.7rem;
+  padding: 0.7rem 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.save-slot-delete:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .slot-name {
@@ -123,7 +144,9 @@ h1 {
 .back-button:hover,
 .back-button:focus-visible,
 .save-slot:hover,
-.save-slot:focus-visible {
+.save-slot:focus-visible,
+.save-slot-delete:hover,
+.save-slot-delete:focus-visible {
   border-color: var(--accent);
   background: #0f1a39;
   outline: 2px solid transparent;
@@ -132,7 +155,8 @@ h1 {
 .language-option:active,
 .menu-option:active,
 .back-button:active,
-.save-slot:active {
+.save-slot:active,
+.save-slot-delete:active {
   transform: translateY(1px);
 }
 
@@ -764,8 +788,14 @@ html[dir='rtl'] #settings-back {
   .language-option,
   .menu-option,
   .back-button,
-  .save-slot {
+  .save-slot,
+  .save-slot-delete {
     font-size: 0.98rem;
+  }
+
+  .save-slot-delete {
+    width: 2.9rem;
+    min-width: 2.9rem;
   }
 
   .grid-board {
@@ -798,9 +828,16 @@ html[dir='rtl'] #settings-back {
   .language-option,
   .menu-option,
   .back-button,
-  .save-slot {
+  .save-slot,
+  .save-slot-delete {
     font-size: 1.06rem;
     padding: 0.9rem 1rem;
+  }
+
+  .save-slot-delete {
+    width: 3rem;
+    min-width: 3rem;
+    padding-inline: 0;
   }
 
   .grid-board {
