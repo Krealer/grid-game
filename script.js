@@ -11,6 +11,7 @@ const menuPlay = document.getElementById('menu-play');
 const menuOptions = document.getElementById('menu-options');
 const menuMedals = document.getElementById('menu-medals');
 const menuCredits = document.getElementById('menu-credits');
+const menuBack = document.getElementById('menu-back');
 
 const STORAGE_KEY = 'preferredLanguage';
 
@@ -24,6 +25,7 @@ const translations = {
     options: 'Options',
     medals: 'Medals',
     credits: 'Credits',
+    back: 'Back',
     dir: 'ltr'
   },
   ja: {
@@ -35,6 +37,7 @@ const translations = {
     options: 'オプション',
     medals: 'メダル',
     credits: 'クレジット',
+    back: '戻る',
     dir: 'ltr'
   },
   ru: {
@@ -46,6 +49,7 @@ const translations = {
     options: 'Опции',
     medals: 'Медали',
     credits: 'Титры',
+    back: 'Назад',
     dir: 'ltr'
   },
   ar: {
@@ -57,6 +61,7 @@ const translations = {
     options: 'خيارات',
     medals: 'ميداليات',
     credits: 'اعتمادات',
+    back: 'رجوع',
     dir: 'rtl'
   }
 };
@@ -93,6 +98,7 @@ function showMenu(language) {
   menuOptions.textContent = locale.options;
   menuMedals.textContent = locale.medals;
   menuCredits.textContent = locale.credits;
+  menuBack.textContent = locale.back;
 
   languageScreen.hidden = true;
   menuScreen.hidden = false;
@@ -102,6 +108,12 @@ languageButtons.forEach((button) => {
   button.addEventListener('click', () => {
     showMenu(button.dataset.language);
   });
+});
+
+menuBack.addEventListener('click', () => {
+  const savedLanguage = localStorage.getItem(STORAGE_KEY);
+  const language = translations[savedLanguage] ? savedLanguage : 'en';
+  showLanguageScreen(language);
 });
 
 const savedLanguage = localStorage.getItem(STORAGE_KEY);
