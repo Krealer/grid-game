@@ -1,14 +1,16 @@
 const GRID_SIZE = 12;
 const TILE_SPEED_PER_SECOND = 2;
 const TILE_STEP_DURATION = 1 / TILE_SPEED_PER_SECOND;
+const SAVE_SCHEMA_VERSION = 1;
+const DEFAULT_MAP_ID = 'map_starter_field';
 
 const ENEMY_STARTS = [
-  { id: 'enemy-fire-slime', x: 3, y: 0, nameKey: 'fireSlime', element: 'fire' },
-  { id: 'enemy-earth-slime', x: 6, y: 2, nameKey: 'earthSlime', element: 'earth' },
-  { id: 'enemy-water-slime', x: 9, y: 4, nameKey: 'waterSlime', element: 'water' }
+  { id: 'enemy_fire_slime_01', x: 3, y: 0, nameKey: 'fireSlime', element: 'fire' },
+  { id: 'enemy_earth_slime_01', x: 6, y: 2, nameKey: 'earthSlime', element: 'earth' },
+  { id: 'enemy_water_slime_01', x: 9, y: 4, nameKey: 'waterSlime', element: 'water' }
 ];
 
-const NPC_TEMPLATE = { id: 'npc-guide', type: 'npc', x: 11, y: 11, nameKey: 'npcGuide' };
+const NPC_TEMPLATE = { id: 'npc_starter_guide', type: 'npc', x: 11, y: 11, nameKey: 'npcGuide' };
 
 const DIALOGUE_LINES = [
   { speaker: 'npc', textKey: 'npcGreeting' },
@@ -123,7 +125,6 @@ const dialoguePlayerAvatar = document.getElementById('dialogue-player-avatar');
 
 const STORAGE_LANGUAGE_KEY = 'preferredLanguage';
 const STORAGE_SAVE_KEY = 'gridGameSaveSlots';
-const STORAGE_SHOW_COORDINATES_KEY = 'gridGameShowCoordinates';
 const SLOT_COUNT = 3;
 
 let currentLanguage = 'en';
@@ -682,17 +683,50 @@ function isWalkable(x, y) {
   return isGround(x, y) && !isEnemyTile(x, y) && !isNpcTile(x, y);
 }
 
-function getDefaultSlots() {
-  return Array.from({ length: SLOT_COUNT }, (_, index) => ({
-    slotId: index + 1,
-    element: null,
-    class: null,
-    playerData: {
-      x: 0,
-      y: 0
+function createCanonicalSlot(slotId) {
+  const now = new Date().toISOString();
+
+  return {
+    metadata: {
+      slotId,
+      createdAt: now,
+      updatedAt: now,
+      version: SAVE_SCHEMA_VERSION
     },
-    defeatedEnemyIds: []
-  }));
+    playerIdentity: {
+      chosenClass: null,
+      chosenElement: null,
+      storyModeChoice: 'story'
+    },
+    playerWorldPosition: {
+      currentMapId: DEFAULT_MAP_ID,
+      playerX: 0,
+      playerY: 0
+    },
+    worldProgress: {
+      defeatedEnemyIds: [],
+      openedDoorIds: [],
+      triggeredEventFlags: {},
+      obtainedKeyIds: []
+    },
+    npcStateFlags: {},
+    settings: {
+      showCoordinates: false
+    },
+    medals: [],
+    party: {
+      activePartyMemberIds: [],
+      recruitedCompanionIds: []
+    },
+    inventory: {
+      inventoryItems: [],
+      equippedGear: {}
+    }
+  };
+}
+
+function getDefaultSlots() {
+  return Array.from({ length: SLOT_COUNT }, (_, index) => createCanonicalSlot(index + 1));
 }
 
 function normalizePosition(playerData) {
@@ -704,6 +738,66 @@ function normalizePosition(playerData) {
   }
 
   return { x, y };
+}
+
+function normalizeBoolean(value, fallback = false) {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function normalizeStringEnum(value, allowedValues, fallback = null) {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  return allowedValues.includes(value) ? value : fallback;
+}
+
+function normalizeStringArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return [...new Set(value.filter((entry) => typeof entry === 'string'))];
+}
+
+function normalizeStringRecord(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce((result, [key, entryValue]) => {
+    if (typeof key === 'string' && typeof entryValue === 'boolean') {
+      result[key] = entryValue;
+    }
+    return result;
+  }, {});
+}
+
+function normalizeStringValueRecord(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce((result, [key, entryValue]) => {
+    if (typeof key === 'string' && typeof entryValue === 'string') {
+      result[key] = entryValue;
+    }
+    return result;
+  }, {});
+}
+
+function normalizeMedals(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((medal) => medal && typeof medal === 'object')
+    .map((medal) => ({
+      medalId: typeof medal.medalId === 'string' ? medal.medalId : null,
+      unlockedAt: typeof medal.unlockedAt === 'string' ? medal.unlockedAt : null
+    }))
+    .filter((medal) => Boolean(medal.medalId));
 }
 
 
@@ -725,6 +819,66 @@ function normalizeDefeatedEnemyIds(defeatedEnemyIds) {
   return [...uniqueIds];
 }
 
+function normalizeCanonicalSlot(slot, slotId) {
+  const canonical = createCanonicalSlot(slotId);
+  const position = normalizePosition({
+    x: slot?.playerWorldPosition?.playerX,
+    y: slot?.playerWorldPosition?.playerY
+  });
+
+  return {
+    metadata: {
+      slotId,
+      createdAt: typeof slot?.metadata?.createdAt === 'string' ? slot.metadata.createdAt : canonical.metadata.createdAt,
+      updatedAt: typeof slot?.metadata?.updatedAt === 'string' ? slot.metadata.updatedAt : canonical.metadata.updatedAt,
+      version: SAVE_SCHEMA_VERSION
+    },
+    playerIdentity: {
+      chosenClass: normalizeStringEnum(slot?.playerIdentity?.chosenClass, ['warrior', 'mage']),
+      chosenElement: normalizeStringEnum(slot?.playerIdentity?.chosenElement, ['fire', 'water', 'earth']),
+      storyModeChoice: normalizeStringEnum(slot?.playerIdentity?.storyModeChoice, ['story', 'no_story'], 'story')
+    },
+    playerWorldPosition: {
+      currentMapId: typeof slot?.playerWorldPosition?.currentMapId === 'string'
+        ? slot.playerWorldPosition.currentMapId
+        : DEFAULT_MAP_ID,
+      playerX: position.x,
+      playerY: position.y
+    },
+    worldProgress: {
+      defeatedEnemyIds: normalizeDefeatedEnemyIds(slot?.worldProgress?.defeatedEnemyIds),
+      openedDoorIds: normalizeStringArray(slot?.worldProgress?.openedDoorIds),
+      triggeredEventFlags: normalizeStringRecord(slot?.worldProgress?.triggeredEventFlags),
+      obtainedKeyIds: normalizeStringArray(slot?.worldProgress?.obtainedKeyIds)
+    },
+    npcStateFlags: normalizeStringRecord(slot?.npcStateFlags),
+    settings: {
+      showCoordinates: normalizeBoolean(slot?.settings?.showCoordinates, false)
+    },
+    medals: normalizeMedals(slot?.medals),
+    party: {
+      activePartyMemberIds: normalizeStringArray(slot?.party?.activePartyMemberIds),
+      recruitedCompanionIds: normalizeStringArray(slot?.party?.recruitedCompanionIds)
+    },
+    inventory: {
+      inventoryItems: normalizeStringArray(slot?.inventory?.inventoryItems),
+      equippedGear: normalizeStringValueRecord(slot?.inventory?.equippedGear)
+    }
+  };
+}
+
+function normalizeLegacySlot(slot, slotId) {
+  const canonical = createCanonicalSlot(slotId);
+  const position = normalizePosition(slot?.playerData);
+
+  canonical.playerIdentity.chosenElement = normalizeStringEnum(slot?.element, ['fire', 'water', 'earth']);
+  canonical.playerIdentity.chosenClass = normalizeStringEnum(slot?.class, ['warrior', 'mage']);
+  canonical.playerWorldPosition.playerX = position.x;
+  canonical.playerWorldPosition.playerY = position.y;
+  canonical.worldProgress.defeatedEnemyIds = normalizeDefeatedEnemyIds(slot?.defeatedEnemyIds);
+  return canonical;
+}
+
 function createEnemyStatesFromDefeatedIds(defeatedEnemyIds) {
   const defeated = new Set(normalizeDefeatedEnemyIds(defeatedEnemyIds));
 
@@ -741,17 +895,26 @@ function loadSlots() {
   try {
     const parsed = JSON.parse(raw);
 
-    if (!Array.isArray(parsed) || parsed.length !== SLOT_COUNT) {
+    if (!Array.isArray(parsed)) {
       return getDefaultSlots();
     }
 
-    return parsed.map((slot, index) => ({
-      slotId: index + 1,
-      element: typeof slot.element === 'string' ? slot.element : null,
-      class: typeof slot.class === 'string' ? slot.class : null,
-      playerData: normalizePosition(slot.playerData),
-      defeatedEnemyIds: normalizeDefeatedEnemyIds(slot.defeatedEnemyIds)
-    }));
+    const normalized = [];
+
+    for (let index = 0; index < SLOT_COUNT; index += 1) {
+      const rawSlot = parsed[index];
+      const slotId = index + 1;
+
+      if (!rawSlot) {
+        normalized.push(createCanonicalSlot(slotId));
+        continue;
+      }
+
+      const isCanonical = rawSlot.metadata && rawSlot.playerIdentity && rawSlot.playerWorldPosition && rawSlot.worldProgress;
+      normalized.push(isCanonical ? normalizeCanonicalSlot(rawSlot, slotId) : normalizeLegacySlot(rawSlot, slotId));
+    }
+
+    return normalized;
   } catch (_error) {
     return getDefaultSlots();
   }
@@ -762,28 +925,58 @@ function saveSlots(slots) {
 }
 
 function getSlotById(slotId) {
-  return loadSlots().find((slot) => slot.slotId === slotId) || null;
+  return loadSlots().find((slot) => slot.metadata.slotId === slotId) || null;
 }
 
 function updateSlot(slotId, data) {
   const slots = loadSlots();
-  const slotIndex = slots.findIndex((slot) => slot.slotId === slotId);
+  const slotIndex = slots.findIndex((slot) => slot.metadata.slotId === slotId);
 
   if (slotIndex === -1) {
     return;
   }
 
-  slots[slotIndex] = {
+  const merged = {
     ...slots[slotIndex],
     ...data,
-    playerData: normalizePosition({
-      ...slots[slotIndex].playerData,
-      ...(data.playerData || {})
-    }),
-    defeatedEnemyIds: normalizeDefeatedEnemyIds(
-      data.defeatedEnemyIds !== undefined ? data.defeatedEnemyIds : slots[slotIndex].defeatedEnemyIds
-    )
+    metadata: {
+      ...slots[slotIndex].metadata,
+      ...(data.metadata || {}),
+      slotId,
+      updatedAt: new Date().toISOString(),
+      version: SAVE_SCHEMA_VERSION
+    },
+    playerIdentity: {
+      ...slots[slotIndex].playerIdentity,
+      ...(data.playerIdentity || {})
+    },
+    playerWorldPosition: {
+      ...slots[slotIndex].playerWorldPosition,
+      ...(data.playerWorldPosition || {})
+    },
+    worldProgress: {
+      ...slots[slotIndex].worldProgress,
+      ...(data.worldProgress || {})
+    },
+    npcStateFlags: {
+      ...slots[slotIndex].npcStateFlags,
+      ...(data.npcStateFlags || {})
+    },
+    settings: {
+      ...slots[slotIndex].settings,
+      ...(data.settings || {})
+    },
+    party: {
+      ...slots[slotIndex].party,
+      ...(data.party || {})
+    },
+    inventory: {
+      ...slots[slotIndex].inventory,
+      ...(data.inventory || {})
+    }
   };
+
+  slots[slotIndex] = normalizeCanonicalSlot(merged, slotId);
 
   saveSlots(slots);
 }
@@ -802,7 +995,7 @@ function getCurrentTilePosition() {
 }
 
 function hasExistingSave(slot) {
-  return Boolean(slot && slot.element && slot.class);
+  return Boolean(slot && slot.playerIdentity?.chosenElement && slot.playerIdentity?.chosenClass);
 }
 
 function renderGameplayInfo() {
@@ -811,11 +1004,11 @@ function renderGameplayInfo() {
   textNodes.gameHelper.textContent = locale.gameplayHelper;
 
   const slot = currentSlotId ? getSlotById(currentSlotId) : null;
-  if (slot && slot.element && slot.class) {
+  if (slot && slot.playerIdentity?.chosenElement && slot.playerIdentity?.chosenClass) {
     textNodes.gameSlot.textContent = formatText(locale.gameplaySlot, {
-      number: slot.slotId,
-      element: locale[slot.element],
-      className: locale[slot.class]
+      number: slot.metadata.slotId,
+      element: locale[slot.playerIdentity.chosenElement],
+      className: locale[slot.playerIdentity.chosenClass]
     });
   } else {
     textNodes.gameSlot.textContent = '';
@@ -842,9 +1035,13 @@ function renderInfoDetails() {
   }
 
   const lines = [
-    formatText(locale.infoSlot, { slot: slot.slotId }),
-    formatText(locale.infoElement, { element: slot.element ? locale[slot.element] : locale.infoNone }),
-    formatText(locale.infoClass, { className: slot.class ? locale[slot.class] : locale.infoNone }),
+    formatText(locale.infoSlot, { slot: slot.metadata.slotId }),
+    formatText(locale.infoElement, {
+      element: slot.playerIdentity?.chosenElement ? locale[slot.playerIdentity.chosenElement] : locale.infoNone
+    }),
+    formatText(locale.infoClass, {
+      className: slot.playerIdentity?.chosenClass ? locale[slot.playerIdentity.chosenClass] : locale.infoNone
+    }),
     formatText(locale.infoCoordinates, { x: currentPos.x, y: currentPos.y })
   ];
 
@@ -874,7 +1071,7 @@ function renderDialogueUI() {
   dialogueArea.classList.toggle('speaker-npc', !playerActive);
 
   const slot = currentSlotId ? getSlotById(currentSlotId) : null;
-  const playerClassName = slot?.class || 'warrior';
+  const playerClassName = slot?.playerIdentity?.chosenClass || 'warrior';
   dialoguePlayerAvatar.classList.remove('portrait--warrior', 'portrait--mage');
   dialoguePlayerAvatar.classList.add(`portrait--${playerClassName}`);
 }
@@ -952,15 +1149,17 @@ function getPlayerOffensiveSkills(className, element) {
 }
 
 function createPlayerBattleData(slot) {
-  const stats = getPlayerStatsByClass(slot.class);
+  const chosenClass = slot.playerIdentity?.chosenClass || 'warrior';
+  const chosenElement = slot.playerIdentity?.chosenElement || 'fire';
+  const stats = getPlayerStatsByClass(chosenClass);
 
   return {
-    class: slot.class,
-    element: slot.element,
+    class: chosenClass,
+    element: chosenElement,
     maxHp: stats.hp,
     hp: stats.hp,
     attack: stats.attack,
-    skills: getPlayerOffensiveSkills(slot.class, slot.element)
+    skills: getPlayerOffensiveSkills(chosenClass, chosenElement)
   };
 }
 
@@ -1357,19 +1556,19 @@ function renderSaveSlots() {
 
     button.type = 'button';
     button.className = 'save-slot';
-    button.dataset.slotId = String(slot.slotId);
+    button.dataset.slotId = String(slot.metadata.slotId);
 
     label.className = 'slot-name';
-    label.textContent = formatText(locale.slotLabel, { number: slot.slotId });
+    label.textContent = formatText(locale.slotLabel, { number: slot.metadata.slotId });
 
     value.className = 'slot-value';
     value.textContent = filledSlot
-      ? `${locale[slot.element]} • ${locale[slot.class]}`
+      ? `${locale[slot.playerIdentity.chosenElement]} • ${locale[slot.playerIdentity.chosenClass]}`
       : locale.newGame;
 
     deleteButton.type = 'button';
     deleteButton.className = 'save-slot-delete';
-    deleteButton.dataset.deleteSlotId = String(slot.slotId);
+    deleteButton.dataset.deleteSlotId = String(slot.metadata.slotId);
     deleteButton.textContent = locale.deleteSlot;
     deleteButton.disabled = !filledSlot;
 
@@ -1384,12 +1583,12 @@ function renderClassConfirmation() {
   const locale = getLocale();
   const slot = currentSlotId ? getSlotById(currentSlotId) : null;
 
-  if (!slot || !slot.class) {
+  if (!slot || !slot.playerIdentity?.chosenClass) {
     textNodes.classConfirmation.textContent = '';
     return;
   }
 
-  textNodes.classConfirmation.textContent = formatText(locale.classSaved, { number: slot.slotId });
+  textNodes.classConfirmation.textContent = formatText(locale.classSaved, { number: slot.metadata.slotId });
 }
 
 function showScreen(screenName) {
@@ -1427,6 +1626,8 @@ function goToSaveScreen() {
 
 function goToElementScreen(slotId) {
   currentSlotId = slotId;
+  showCoordinates = false;
+  applyCoordinateVisibility();
   enemyStates = createInitialEnemyStates();
   npcState = createNpcState(enemyStates);
   buildGrid();
@@ -1491,17 +1692,19 @@ function openSettingsScreen() {
   showScreen('settings');
 }
 
-function saveShowCoordinatesSetting() {
-  localStorage.setItem(STORAGE_SHOW_COORDINATES_KEY, showCoordinates ? '1' : '0');
-}
-
 function applyCoordinateVisibility() {
   gridBoard.classList.toggle('show-coordinates', showCoordinates);
 }
 
 function toggleShowCoordinates() {
   showCoordinates = !showCoordinates;
-  saveShowCoordinatesSetting();
+  if (currentSlotId) {
+    updateSlot(currentSlotId, {
+      settings: {
+        showCoordinates
+      }
+    });
+  }
   applyCoordinateVisibility();
   renderSettingsText();
 }
@@ -1517,20 +1720,28 @@ function writeCurrentGameToSlot() {
   }
 
   const slot = getSlotById(currentSlotId);
-  if (!slot || !slot.element || !slot.class) {
+  if (!slot || !slot.playerIdentity?.chosenElement || !slot.playerIdentity?.chosenClass) {
     return false;
   }
 
   const pos = getCurrentTilePosition();
   updateSlot(currentSlotId, {
-    slotId: currentSlotId,
-    element: slot.element,
-    class: slot.class,
-    playerData: {
-      x: pos.x,
-      y: pos.y
+    playerIdentity: {
+      chosenElement: slot.playerIdentity.chosenElement,
+      chosenClass: slot.playerIdentity.chosenClass,
+      storyModeChoice: slot.playerIdentity.storyModeChoice
     },
-    defeatedEnemyIds: getDefeatedEnemyIdsFromCurrentState()
+    playerWorldPosition: {
+      currentMapId: DEFAULT_MAP_ID,
+      playerX: pos.x,
+      playerY: pos.y
+    },
+    worldProgress: {
+      defeatedEnemyIds: getDefeatedEnemyIdsFromCurrentState()
+    },
+    settings: {
+      showCoordinates
+    }
   });
 
   renderSaveSlots();
@@ -1545,12 +1756,15 @@ function getDefeatedEnemyIdsFromCurrentState() {
 }
 
 function deleteSlotProgress(slotId) {
-  updateSlot(slotId, {
-    element: null,
-    class: null,
-    playerData: { x: 0, y: 0 },
-    defeatedEnemyIds: []
-  });
+  const slots = loadSlots();
+  const slotIndex = slots.findIndex((slot) => slot.metadata.slotId === slotId);
+
+  if (slotIndex === -1) {
+    return;
+  }
+
+  slots[slotIndex] = createCanonicalSlot(slotId);
+  saveSlots(slots);
 }
 
 function openDeleteConfirmation(slotId) {
@@ -1747,7 +1961,7 @@ function isOrthogonallyAdjacentToEntity(entity) {
 function enterBattleMode(enemy) {
   const slot = currentSlotId ? getSlotById(currentSlotId) : null;
 
-  if (!slot || !slot.class || !slot.element) {
+  if (!slot || !slot.playerIdentity?.chosenClass || !slot.playerIdentity?.chosenElement) {
     return;
   }
 
@@ -2011,10 +2225,15 @@ saveSlotsList.addEventListener('click', (event) => {
   }
 
   currentSlotId = slotId;
-  enemyStates = createEnemyStatesFromDefeatedIds(slot.defeatedEnemyIds);
+  showCoordinates = slot.settings?.showCoordinates || false;
+  applyCoordinateVisibility();
+  enemyStates = createEnemyStatesFromDefeatedIds(slot.worldProgress?.defeatedEnemyIds);
   npcState = createNpcState(enemyStates);
   buildGrid();
-  const savedPos = normalizePosition(slot.playerData);
+  const savedPos = normalizePosition({
+    x: slot.playerWorldPosition?.playerX,
+    y: slot.playerWorldPosition?.playerY
+  });
   setPlayerPosition(savedPos.x, savedPos.y);
   goToGameScreen();
 });
@@ -2025,7 +2244,37 @@ elementButtons.forEach((button) => {
       return;
     }
 
-    updateSlot(currentSlotId, { element: button.dataset.element, class: null, playerData: { x: 0, y: 0 }, defeatedEnemyIds: [] });
+    updateSlot(currentSlotId, {
+      playerIdentity: {
+        chosenElement: button.dataset.element,
+        chosenClass: null,
+        storyModeChoice: 'story'
+      },
+      playerWorldPosition: {
+        currentMapId: DEFAULT_MAP_ID,
+        playerX: 0,
+        playerY: 0
+      },
+      worldProgress: {
+        defeatedEnemyIds: [],
+        openedDoorIds: [],
+        triggeredEventFlags: {},
+        obtainedKeyIds: []
+      },
+      npcStateFlags: {},
+      medals: [],
+      party: {
+        activePartyMemberIds: [],
+        recruitedCompanionIds: []
+      },
+      inventory: {
+        inventoryItems: [],
+        equippedGear: {}
+      },
+      settings: {
+        showCoordinates: false
+      }
+    });
     goToClassScreen();
   });
 });
@@ -2037,13 +2286,29 @@ classButtons.forEach((button) => {
     }
 
     updateSlot(currentSlotId, {
-      class: button.dataset.class,
-      playerData: { x: 0, y: 0 },
-      defeatedEnemyIds: []
+      playerIdentity: {
+        chosenClass: button.dataset.class
+      },
+      playerWorldPosition: {
+        currentMapId: DEFAULT_MAP_ID,
+        playerX: 0,
+        playerY: 0
+      },
+      worldProgress: {
+        defeatedEnemyIds: []
+      },
+      settings: {
+        showCoordinates: false
+      }
     });
 
     const slot = getSlotById(currentSlotId);
-    const start = normalizePosition(slot?.playerData);
+    const start = normalizePosition({
+      x: slot?.playerWorldPosition?.playerX,
+      y: slot?.playerWorldPosition?.playerY
+    });
+    showCoordinates = slot?.settings?.showCoordinates || false;
+    applyCoordinateVisibility();
     setPlayerPosition(start.x, start.y);
 
     renderClassConfirmation();
@@ -2074,7 +2339,7 @@ if (translations[savedLanguage]) {
   currentLanguage = savedLanguage;
 }
 
-showCoordinates = localStorage.getItem(STORAGE_SHOW_COORDINATES_KEY) === '1';
+showCoordinates = false;
 
 buildGrid();
 setDocumentLanguage();
