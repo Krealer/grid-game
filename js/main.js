@@ -1780,13 +1780,19 @@ function applyExperienceGain(memberState, expAmount) {
 function grantBattleExpToActiveParty(slotId, expAmount) {
   const slot = getSlotById(slotId);
   if (!slot) {
-    return { gainedExp: 0, levelsGainedByMemberId: {}, memberState: null };
+    return {
+      gainedExp: 0,
+      levelsGainedByMemberId: {},
+      updatedMemberStatesById: {},
+      memberState: null
+    };
   }
 
   const activeIds = slot.party?.activePartyMemberIds?.length ? slot.party.activePartyMemberIds : [MAIN_PARTY_MEMBER_ID];
   const gainedExp = Math.max(0, Math.floor(expAmount));
   const memberStates = normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity);
   const levelsGainedByMemberId = {};
+  const updatedMemberStatesById = {};
 
   activeIds.forEach((memberId) => {
     const memberState = memberStates[memberId];
@@ -1797,6 +1803,7 @@ function grantBattleExpToActiveParty(slotId, expAmount) {
     const progressionResult = applyExperienceGain(memberState, gainedExp);
     memberStates[memberId] = progressionResult.updatedState;
     levelsGainedByMemberId[memberId] = progressionResult.levelsGained;
+    updatedMemberStatesById[memberId] = progressionResult.updatedState;
   });
 
   updateSlot(slotId, {
@@ -1809,8 +1816,28 @@ function grantBattleExpToActiveParty(slotId, expAmount) {
   return {
     gainedExp,
     levelsGainedByMemberId,
+    updatedMemberStatesById,
     memberState: memberStates[MAIN_PARTY_MEMBER_ID]
   };
+}
+
+function buildBattleProgressSummary(activeMemberIds, progressionResult) {
+  const gainedExp = progressionResult?.gainedExp || 0;
+  if (!activeMemberIds?.length || !gainedExp) {
+    return [];
+  }
+
+  return activeMemberIds
+    .filter((memberId) => Boolean(progressionResult.updatedMemberStatesById?.[memberId]))
+    .map((memberId) => {
+      const updatedState = progressionResult.updatedMemberStatesById[memberId];
+      return {
+        memberId,
+        gainedExp,
+        levelsGained: progressionResult.levelsGainedByMemberId?.[memberId] || 0,
+        newLevel: updatedState.level
+      };
+    });
 }
 
 function healActivePartyToFull(slotId) {
@@ -1929,11 +1956,17 @@ function endBattleVictory() {
 
   battleState.resultExpGained = battleState.enemy?.expReward || 0;
   battleState.resultLevelUps = 0;
+  battleState.resultPartyProgress = [];
 
   if (currentSlotId) {
+    const slot = getSlotById(currentSlotId);
+    const activeMemberIds = slot?.party?.activePartyMemberIds?.length
+      ? slot.party.activePartyMemberIds
+      : [MAIN_PARTY_MEMBER_ID];
     const progressionResult = grantBattleExpToActiveParty(currentSlotId, battleState.resultExpGained);
     battleState.resultExpGained = progressionResult.gainedExp;
     battleState.resultLevelUps = progressionResult.levelsGainedByMemberId[MAIN_PARTY_MEMBER_ID] || 0;
+    battleState.resultPartyProgress = buildBattleProgressSummary(activeMemberIds, progressionResult);
 
     const defeatedEnemyIds = getDefeatedEnemyIdsFromCurrentState();
     synchronizeStarterDoorProgress(currentSlotId, defeatedEnemyIds);
@@ -2215,6 +2248,23 @@ function renderVictoryScreen() {
   if (battleState.resultLevelUps > 0) {
     lines.push(locale.levelUp);
   }
+
+  battleState.resultPartyProgress
+    .filter((entry) => entry.memberId !== MAIN_PARTY_MEMBER_ID)
+    .forEach((entry) => {
+      const companionName = getPartyMemberDisplayName(entry.memberId, locale);
+      lines.push(formatText(locale.companionGainedExp, {
+        companion: companionName,
+        amount: entry.gainedExp
+      }));
+
+      if (entry.levelsGained > 0) {
+        lines.push(formatText(locale.companionLevelUp, {
+          companion: companionName,
+          level: entry.newLevel
+        }));
+      }
+    });
 
   textNodes.victoryMessage.textContent = lines.join('\n');
 
@@ -3006,6 +3056,7 @@ function enterBattleMode(enemy) {
   battleState.feedbackEntries = [];
   battleState.resultExpGained = 0;
   battleState.resultLevelUps = 0;
+  battleState.resultPartyProgress = [];
 
   renderBattleUI();
   showScreen('battle');
@@ -3066,6 +3117,7 @@ function runFromBattle() {
   battleState.feedbackEntries = [];
   battleState.resultExpGained = 0;
   battleState.resultLevelUps = 0;
+  battleState.resultPartyProgress = [];
   renderBattleUI();
   goToGameScreen();
 }
@@ -3109,6 +3161,7 @@ function clearBattleState() {
   battleState.feedbackEntries = [];
   battleState.resultExpGained = 0;
   battleState.resultLevelUps = 0;
+  battleState.resultPartyProgress = [];
 }
 
 function handleVictoryContinue() {
