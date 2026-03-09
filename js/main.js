@@ -3592,13 +3592,14 @@ function getGridTileCoordinatesFromEvent(event) {
     };
   }
 
-  if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) {
+  const point = getEventClientPoint(event);
+  if (!point) {
     return null;
   }
 
   const rect = gridBoard.getBoundingClientRect();
-  const relativeX = event.clientX - rect.left;
-  const relativeY = event.clientY - rect.top;
+  const relativeX = point.clientX - rect.left;
+  const relativeY = point.clientY - rect.top;
 
   if (relativeX < 0 || relativeY < 0 || relativeX >= rect.width || relativeY >= rect.height) {
     return null;
@@ -3607,6 +3608,25 @@ function getGridTileCoordinatesFromEvent(event) {
   const x = Math.floor((relativeX / rect.width) * GRID_SIZE);
   const y = Math.floor((relativeY / rect.height) * GRID_SIZE);
   return { x, y };
+}
+
+function getEventClientPoint(event) {
+  if (Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) {
+    return {
+      clientX: event.clientX,
+      clientY: event.clientY
+    };
+  }
+
+  const primaryTouch = event.changedTouches?.[0] || event.touches?.[0];
+  if (!primaryTouch || !Number.isFinite(primaryTouch.clientX) || !Number.isFinite(primaryTouch.clientY)) {
+    return null;
+  }
+
+  return {
+    clientX: primaryTouch.clientX,
+    clientY: primaryTouch.clientY
+  };
 }
 
 function addUnifiedPressListener(element, onPress) {
@@ -3633,6 +3653,15 @@ function addUnifiedPressListener(element, onPress) {
       event.preventDefault();
     }
   });
+
+  element.addEventListener('touchend', (event) => {
+    const handled = onPress(event) === true;
+    suppressNextClick = handled;
+
+    if (handled && event.cancelable) {
+      event.preventDefault();
+    }
+  }, { passive: false });
 }
 
 function bindButtonPress(element, onPress) {
