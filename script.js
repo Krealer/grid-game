@@ -307,7 +307,8 @@ const screens = {
   gameMenu: document.getElementById('game-menu-screen'),
   settings: document.getElementById('settings-screen'),
   inventory: document.getElementById('inventory-screen'),
-  info: document.getElementById('info-screen')
+  info: document.getElementById('info-screen'),
+  party: document.getElementById('party-screen')
 };
 
 const languageButtons = [...document.querySelectorAll('.language-option')];
@@ -360,6 +361,7 @@ const textNodes = {
   gameMenuTitle: document.getElementById('game-menu-title'),
   gameMenuStatus: document.getElementById('game-menu-status'),
   gmBackToGame: document.getElementById('gm-back-to-game'),
+  gmParty: document.getElementById('gm-party'),
   gmInventory: document.getElementById('gm-inventory'),
   gmInfo: document.getElementById('gm-info'),
   gmSettings: document.getElementById('gm-settings'),
@@ -372,6 +374,12 @@ const textNodes = {
   inventoryTitle: document.getElementById('inventory-title'),
   inventoryHelper: document.getElementById('inventory-helper'),
   inventoryBack: document.getElementById('inventory-back'),
+  partyTitle: document.getElementById('party-title'),
+  partyActiveTitle: document.getElementById('party-active-title'),
+  partyRecruitedTitle: document.getElementById('party-recruited-title'),
+  partyActiveEmpty: document.getElementById('party-active-empty'),
+  partyRecruitedEmpty: document.getElementById('party-recruited-empty'),
+  partyBack: document.getElementById('party-back'),
   infoTitle: document.getElementById('info-title'),
   infoHelper: document.getElementById('info-helper'),
   infoDetails: document.getElementById('info-details'),
@@ -382,6 +390,8 @@ const saveSlotsList = document.getElementById('save-slots');
 const battleOptionsList = document.getElementById('battle-options-list');
 const dialogueArea = document.getElementById('dialogue-area');
 const dialoguePlayerAvatar = document.getElementById('dialogue-player-avatar');
+const partyActiveList = document.getElementById('party-active-list');
+const partyRecruitedList = document.getElementById('party-recruited-list');
 
 const STORAGE_LANGUAGE_KEY = 'preferredLanguage';
 const STORAGE_SAVE_KEY = 'gridGameSaveSlots';
@@ -516,6 +526,16 @@ const translations = {
     run: 'Run',
     gameMenu: 'Game Menu',
     backToGame: 'Back to Game',
+    party: 'Party',
+    partyTitle: 'Party Management',
+    activeParty: 'Active Party',
+    recruitedCompanions: 'Recruited Companions',
+    remove: 'Remove',
+    cannotRemoveMainPlayer: 'Main player (cannot be removed)',
+    noCompanionsRecruited: 'No companions recruited',
+    noRemovableCompanions: 'No removable companions',
+    activeLabel: 'Active',
+    reserveLabel: 'Reserve',
     inventory: 'Inventory',
     info: 'Info',
     settings: 'Settings',
@@ -621,6 +641,16 @@ const translations = {
     run: 'にげる',
     gameMenu: 'ゲームメニュー',
     backToGame: 'ゲームに戻る',
+    party: 'パーティ',
+    partyTitle: 'パーティ管理',
+    activeParty: 'アクティブパーティ',
+    recruitedCompanions: '加入済み仲間',
+    remove: '外す',
+    cannotRemoveMainPlayer: '主人公（外せません）',
+    noCompanionsRecruited: '仲間はまだいません',
+    noRemovableCompanions: '外せる仲間がいません',
+    activeLabel: '参加中',
+    reserveLabel: '待機中',
     inventory: 'インベントリ',
     info: '情報',
     settings: '設定',
@@ -726,6 +756,16 @@ const translations = {
     run: 'Бежать',
     gameMenu: 'Меню игры',
     backToGame: 'Вернуться в игру',
+    party: 'Отряд',
+    partyTitle: 'Управление отрядом',
+    activeParty: 'Активный отряд',
+    recruitedCompanions: 'Нанятые спутники',
+    remove: 'Убрать',
+    cannotRemoveMainPlayer: 'Главный герой (нельзя убрать)',
+    noCompanionsRecruited: 'Спутники не наняты',
+    noRemovableCompanions: 'Нет спутников для удаления',
+    activeLabel: 'Активен',
+    reserveLabel: 'В резерве',
     inventory: 'Инвентарь',
     info: 'Инфо',
     settings: 'Настройки',
@@ -831,6 +871,16 @@ const translations = {
     run: 'هرب',
     gameMenu: 'قائمة اللعبة',
     backToGame: 'العودة إلى اللعبة',
+    party: 'الفريق',
+    partyTitle: 'إدارة الفريق',
+    activeParty: 'الفريق النشط',
+    recruitedCompanions: 'الرفاق المجندون',
+    remove: 'إزالة',
+    cannotRemoveMainPlayer: 'الشخصية الرئيسية (لا يمكن إزالتها)',
+    noCompanionsRecruited: 'لا يوجد رفاق مجندون',
+    noRemovableCompanions: 'لا يوجد رفاق يمكن إزالتهم',
+    activeLabel: 'نشط',
+    reserveLabel: 'احتياطي',
     inventory: 'المخزون',
     info: 'معلومات',
     settings: 'الإعدادات',
@@ -1174,7 +1224,8 @@ function createCanonicalSlot(slotId) {
       recruitedCompanionIds: [],
       memberStates: {
         [MAIN_PARTY_MEMBER_ID]: createMainPartyMemberState('warrior', 'fire')
-      }
+      },
+      companionWorldStateFlags: {}
     },
     inventory: {
       inventoryItems: [],
@@ -1259,6 +1310,21 @@ function normalizeStringValueRecord(value) {
   return Object.entries(value).reduce((result, [key, entryValue]) => {
     if (typeof key === 'string' && typeof entryValue === 'string') {
       result[key] = entryValue;
+    }
+    return result;
+  }, {});
+}
+
+function normalizeCompanionWorldStateFlags(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  const allowedStates = new Set(['following_player', 'at_origin_pending_spawn', 'at_origin']);
+
+  return Object.entries(value).reduce((result, [companionId, state]) => {
+    if (STABLE_ID_PATTERNS.companion.test(companionId) && typeof state === 'string' && allowedStates.has(state)) {
+      result[companionId] = state;
     }
     return result;
   }, {});
@@ -1394,7 +1460,8 @@ function normalizeCanonicalSlot(slot, slotId) {
         return [...new Set(ensuredMain)].slice(0, MAX_ACTIVE_PARTY_SIZE);
       })(),
       recruitedCompanionIds: normalizeStableIdArray(slot?.party?.recruitedCompanionIds, STABLE_ID_PATTERNS.companion),
-      memberStates: normalizePartyMemberStates(slot?.party?.memberStates, slot?.playerIdentity)
+      memberStates: normalizePartyMemberStates(slot?.party?.memberStates, slot?.playerIdentity),
+      companionWorldStateFlags: normalizeCompanionWorldStateFlags(slot?.party?.companionWorldStateFlags)
     },
     inventory: {
       inventoryItems: normalizeStableIdArray(slot?.inventory?.inventoryItems, STABLE_ID_PATTERNS.item),
@@ -1596,6 +1663,92 @@ function renderInfoDetails() {
   textNodes.infoDetails.textContent = lines.join('\n');
 }
 
+function getPartyMemberDisplayName(memberId, locale) {
+  if (memberId === MAIN_PARTY_MEMBER_ID) {
+    return locale.battleStatusPlayer;
+  }
+
+  const companion = COMPANION_DEFINITIONS[memberId];
+  if (!companion) {
+    return memberId;
+  }
+
+  return locale[companion.nameKey] || companion.id;
+}
+
+function renderPartyScreen() {
+  const locale = getLocale();
+  const slot = currentSlotId ? getSlotById(currentSlotId) : null;
+  const activeMemberIds = slot?.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID];
+  const recruitedCompanionIds = slot?.party?.recruitedCompanionIds || [];
+  const activeCompanionIds = activeMemberIds.filter((memberId) => memberId !== MAIN_PARTY_MEMBER_ID);
+  const activeSet = new Set(activeMemberIds);
+
+  partyActiveList.innerHTML = '';
+  partyRecruitedList.innerHTML = '';
+
+  const mainPlayerItem = document.createElement('li');
+  mainPlayerItem.className = 'party-row';
+  mainPlayerItem.textContent = `${locale.battleStatusPlayer} — ${locale.cannotRemoveMainPlayer}`;
+  partyActiveList.append(mainPlayerItem);
+
+  activeCompanionIds.forEach((companionId) => {
+    const item = document.createElement('li');
+    item.className = 'party-row party-row-removable';
+
+    const label = document.createElement('span');
+    label.className = 'party-member-label';
+    label.textContent = getPartyMemberDisplayName(companionId, locale);
+
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.className = 'menu-option party-remove-button';
+    removeButton.dataset.removeCompanionId = companionId;
+    removeButton.textContent = locale.remove;
+
+    item.append(label, removeButton);
+    partyActiveList.append(item);
+  });
+
+  recruitedCompanionIds.forEach((companionId) => {
+    const item = document.createElement('li');
+    item.className = 'party-row';
+    const statusKey = activeSet.has(companionId) ? 'activeLabel' : 'reserveLabel';
+    item.textContent = `${getPartyMemberDisplayName(companionId, locale)} — ${locale[statusKey]}`;
+    partyRecruitedList.append(item);
+  });
+
+  textNodes.partyActiveEmpty.textContent = activeCompanionIds.length ? '' : locale.noRemovableCompanions;
+  textNodes.partyRecruitedEmpty.textContent = recruitedCompanionIds.length ? '' : locale.noCompanionsRecruited;
+}
+
+function removeCompanionFromActiveParty(companionId) {
+  if (!currentSlotId || !companionId || !COMPANION_DEFINITIONS[companionId]) {
+    return;
+  }
+
+  const slot = getSlotById(currentSlotId);
+  if (!slot) {
+    return;
+  }
+
+  const activePartyMemberIds = (slot.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID])
+    .filter((memberId) => memberId !== companionId);
+  const companionWorldStateFlags = {
+    ...(slot.party?.companionWorldStateFlags || {}),
+    [companionId]: 'at_origin_pending_spawn'
+  };
+
+  updateSlot(currentSlotId, {
+    party: {
+      activePartyMemberIds,
+      companionWorldStateFlags
+    }
+  });
+
+  renderPartyScreen();
+}
+
 
 
 function matchesDialogueConditions(node, slot) {
@@ -1662,6 +1815,7 @@ function applyRecruitmentEffects(effects, slot) {
       recruitedCompanionIds: slot.party?.recruitedCompanionIds || [],
       activePartyMemberIds: slot.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID],
       memberStates: normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity),
+      companionWorldStateFlags: slot.party?.companionWorldStateFlags || {},
       npcStateFlags: slot.npcStateFlags || {}
     };
   }
@@ -1669,6 +1823,9 @@ function applyRecruitmentEffects(effects, slot) {
   const recruitedCompanionIds = new Set(slot.party?.recruitedCompanionIds || []);
   const activePartyMemberIds = [...(slot.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID])];
   const memberStates = normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity);
+  const companionWorldStateFlags = {
+    ...(slot.party?.companionWorldStateFlags || {})
+  };
   const npcStateFlags = { ...(slot.npcStateFlags || {}) };
 
   recruitedCompanionIds.add(companionId);
@@ -1682,6 +1839,8 @@ function applyRecruitmentEffects(effects, slot) {
     memberStates[companionId] = companionState;
   }
 
+  companionWorldStateFlags[companionId] = 'following_player';
+
   if (effects.recruitNpcFlag) {
     npcStateFlags[effects.recruitNpcFlag] = true;
   }
@@ -1690,6 +1849,7 @@ function applyRecruitmentEffects(effects, slot) {
     recruitedCompanionIds: [...recruitedCompanionIds],
     activePartyMemberIds,
     memberStates,
+    companionWorldStateFlags,
     npcStateFlags
   };
 }
@@ -1718,6 +1878,7 @@ function applyDialogueEffects(effects) {
     recruitedCompanionIds: slot.party?.recruitedCompanionIds || [],
     activePartyMemberIds: slot.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID],
     memberStates: normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity),
+    companionWorldStateFlags: slot.party?.companionWorldStateFlags || {},
     npcStateFlags: slot.npcStateFlags || {}
   };
 
@@ -1739,7 +1900,8 @@ function applyDialogueEffects(effects) {
     party: {
       recruitedCompanionIds: recruitmentState.recruitedCompanionIds,
       activePartyMemberIds: recruitmentState.activePartyMemberIds,
-      memberStates: recruitmentState.memberStates
+      memberStates: recruitmentState.memberStates,
+      companionWorldStateFlags: recruitmentState.companionWorldStateFlags
     }
   });
 
@@ -2338,6 +2500,7 @@ function renderStaticText() {
   textNodes.defeatMainMenu.textContent = locale.returnToMainMenu;
   textNodes.gameMenuTitle.textContent = locale.gameMenu;
   textNodes.gmBackToGame.textContent = locale.backToGame;
+  textNodes.gmParty.textContent = locale.party;
   textNodes.gmInventory.textContent = locale.inventory;
   textNodes.gmInfo.textContent = locale.info;
   textNodes.gmSettings.textContent = locale.settings;
@@ -2349,6 +2512,11 @@ function renderStaticText() {
   textNodes.inventoryTitle.textContent = locale.inventoryTitle;
   textNodes.inventoryHelper.textContent = locale.inventoryEmpty;
   textNodes.inventoryBack.textContent = locale.back;
+
+  textNodes.partyTitle.textContent = locale.partyTitle;
+  textNodes.partyActiveTitle.textContent = locale.activeParty;
+  textNodes.partyRecruitedTitle.textContent = locale.recruitedCompanions;
+  textNodes.partyBack.textContent = locale.back;
 
   textNodes.infoTitle.textContent = locale.infoTitle;
   textNodes.infoHelper.textContent = locale.infoPlaceholder;
@@ -2368,6 +2536,7 @@ function renderStaticText() {
   renderClassConfirmation();
   renderGameplayInfo();
   renderInfoDetails();
+  renderPartyScreen();
   renderBattleUI();
   renderVictoryScreen();
   renderDefeatScreen();
@@ -2574,6 +2743,11 @@ function openInventoryScreen() {
   showScreen('inventory');
 }
 
+function openPartyScreen() {
+  renderPartyScreen();
+  showScreen('party');
+}
+
 function openInfoScreen() {
   renderInfoDetails();
   showScreen('info');
@@ -2603,6 +2777,7 @@ function toggleShowCoordinates() {
 
 function returnToGameMenu() {
   renderInfoDetails();
+  renderPartyScreen();
   showScreen('gameMenu');
 }
 
@@ -3206,6 +3381,7 @@ textNodes.classBack.addEventListener('click', () => {
 });
 textNodes.openGameMenu.addEventListener('click', openGameMenu);
 textNodes.gmBackToGame.addEventListener('click', goToGameScreen);
+textNodes.gmParty.addEventListener('click', openPartyScreen);
 textNodes.gmInventory.addEventListener('click', openInventoryScreen);
 textNodes.gmInfo.addEventListener('click', openInfoScreen);
 textNodes.gmSettings.addEventListener('click', openSettingsScreen);
@@ -3215,6 +3391,7 @@ textNodes.gmQuit.addEventListener('click', handleQuitWithoutSaving);
 textNodes.settingsToggleCoordinates.addEventListener('click', toggleShowCoordinates);
 textNodes.settingsBack.addEventListener('click', returnToGameMenu);
 textNodes.inventoryBack.addEventListener('click', returnToGameMenu);
+textNodes.partyBack.addEventListener('click', returnToGameMenu);
 textNodes.infoBack.addEventListener('click', returnToGameMenu);
 textNodes.deleteConfirmYes.addEventListener('click', confirmDeleteSlot);
 textNodes.deleteConfirmNo.addEventListener('click', cancelDeleteConfirmation);
@@ -3311,6 +3488,7 @@ elementButtons.forEach((button) => {
       party: {
         activePartyMemberIds: [MAIN_PARTY_MEMBER_ID],
         recruitedCompanionIds: [],
+        companionWorldStateFlags: {},
         memberStates: {
           [MAIN_PARTY_MEMBER_ID]: createMainPartyMemberState('warrior', button.dataset.element)
         }
@@ -3353,6 +3531,7 @@ classButtons.forEach((button) => {
       },
       party: {
         activePartyMemberIds: [MAIN_PARTY_MEMBER_ID],
+        companionWorldStateFlags: {},
         memberStates: {
           [MAIN_PARTY_MEMBER_ID]: createMainPartyMemberState(button.dataset.class, chosenElement)
         }
@@ -3403,6 +3582,15 @@ dialogueArea.addEventListener('keydown', (event) => {
 
   event.preventDefault();
   advanceDialogue();
+});
+
+partyActiveList.addEventListener('click', (event) => {
+  const removeButton = event.target.closest('button[data-remove-companion-id]');
+  if (!removeButton || screens.party.hidden) {
+    return;
+  }
+
+  removeCompanionFromActiveParty(removeButton.dataset.removeCompanionId);
 });
 
 const savedLanguage = localStorage.getItem(STORAGE_LANGUAGE_KEY);

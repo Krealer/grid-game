@@ -50,6 +50,7 @@ This document defines the **canonical save schema** for this project.
   "party": {
     "activePartyMemberIds": ["main_player"],
     "recruitedCompanionIds": [],
+    "companionWorldStateFlags": {},
     "memberStates": {
       "main_player": {
         "id": "main_player",
@@ -93,6 +94,7 @@ This document defines the **canonical save schema** for this project.
 - `party`: party system foundations and persistent HP state.
   - `activePartyMemberIds`: active battle/world party member ids.
   - `recruitedCompanionIds`: recruited companion ids.
+  - `companionWorldStateFlags`: per-companion world-return state (`following_player`, `at_origin_pending_spawn`, `at_origin`).
   - `memberStates`: keyed party member state records.
     - `id`: stable party member id.
     - `className`: class key (`warrior` or `mage` for now).
