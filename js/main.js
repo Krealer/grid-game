@@ -3297,10 +3297,6 @@ function findPath(start, end) {
 }
 
 function moveToTile(targetX, targetY) {
-  if (playerState.moving) {
-    return;
-  }
-
   if (!isInsideGrid(targetX, targetY)) {
     return;
   }
@@ -3325,6 +3321,8 @@ function moveToTile(targetX, targetY) {
 
   playerState.path = path;
   playerState.moving = false;
+  playerState.stepToX = start.x;
+  playerState.stepToY = start.y;
   playerState.stepElapsed = 0;
   playerState.lastTimestamp = null;
   beginNextStep();
