@@ -102,6 +102,14 @@ Examples:
 - companion ids: `companion_future_01`
 - item ids: `item_potion_small`
 
+Validation rule summary:
+- `map_...` ids are required for `currentMapId`
+- `door_...` ids are required for `openedDoorIds`
+- `key_...` ids are required for `obtainedKeyIds`
+- `medal_...` ids are required for `medals[].medalId`
+- `companion_...` ids are required for `party.recruitedCompanionIds`
+- `item_...` ids are required for `inventory.inventoryItems`
+
 ## Already in active use
 
 - `map_starter_field`
@@ -139,4 +147,4 @@ A slot is treated as "New Game" when either `chosenClass` or `chosenElement` is 
 
 ## Backward compatibility
 
-The loader migrates legacy slot shapes into this canonical object during read, then writes canonical format on subsequent saves.
+The loader migrates legacy slot shapes into this canonical object during read and automatically re-persists normalized canonical slots.

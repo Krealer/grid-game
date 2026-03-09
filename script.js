@@ -3,6 +3,14 @@ const TILE_SPEED_PER_SECOND = 2;
 const TILE_STEP_DURATION = 1 / TILE_SPEED_PER_SECOND;
 const SAVE_SCHEMA_VERSION = 1;
 const DEFAULT_MAP_ID = 'map_starter_field';
+const STABLE_ID_PATTERNS = {
+  map: /^map_[a-z0-9]+(?:_[a-z0-9]+)*$/,
+  door: /^door_[a-z0-9]+(?:_[a-z0-9]+)*$/,
+  key: /^key_[a-z0-9]+(?:_[a-z0-9]+)*$/,
+  medal: /^medal_[a-z0-9]+(?:_[a-z0-9]+)*$/,
+  companion: /^companion_[a-z0-9]+(?:_[a-z0-9]+)*$/,
+  item: /^item_[a-z0-9]+(?:_[a-z0-9]+)*$/
+};
 
 const ENEMY_STARTS = [
   { id: 'enemy_fire_slime_01', x: 3, y: 0, nameKey: 'fireSlime', element: 'fire' },
@@ -752,6 +760,18 @@ function normalizeStringEnum(value, allowedValues, fallback = null) {
   return allowedValues.includes(value) ? value : fallback;
 }
 
+function normalizeStableId(value, pattern, fallback = null) {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  return pattern.test(value) ? value : fallback;
+}
+
+function normalizeStableIdArray(value, pattern) {
+  return normalizeStringArray(value).filter((entry) => pattern.test(entry));
+}
+
 function normalizeStringArray(value) {
   if (!Array.isArray(value)) {
     return [];
@@ -794,7 +814,7 @@ function normalizeMedals(value) {
   return value
     .filter((medal) => medal && typeof medal === 'object')
     .map((medal) => ({
-      medalId: typeof medal.medalId === 'string' ? medal.medalId : null,
+      medalId: normalizeStableId(medal.medalId, STABLE_ID_PATTERNS.medal),
       unlockedAt: typeof medal.unlockedAt === 'string' ? medal.unlockedAt : null
     }))
     .filter((medal) => Boolean(medal.medalId));
@@ -840,16 +860,16 @@ function normalizeCanonicalSlot(slot, slotId) {
     },
     playerWorldPosition: {
       currentMapId: typeof slot?.playerWorldPosition?.currentMapId === 'string'
-        ? slot.playerWorldPosition.currentMapId
+        ? normalizeStableId(slot.playerWorldPosition.currentMapId, STABLE_ID_PATTERNS.map, DEFAULT_MAP_ID)
         : DEFAULT_MAP_ID,
       playerX: position.x,
       playerY: position.y
     },
     worldProgress: {
       defeatedEnemyIds: normalizeDefeatedEnemyIds(slot?.worldProgress?.defeatedEnemyIds),
-      openedDoorIds: normalizeStringArray(slot?.worldProgress?.openedDoorIds),
+      openedDoorIds: normalizeStableIdArray(slot?.worldProgress?.openedDoorIds, STABLE_ID_PATTERNS.door),
       triggeredEventFlags: normalizeStringRecord(slot?.worldProgress?.triggeredEventFlags),
-      obtainedKeyIds: normalizeStringArray(slot?.worldProgress?.obtainedKeyIds)
+      obtainedKeyIds: normalizeStableIdArray(slot?.worldProgress?.obtainedKeyIds, STABLE_ID_PATTERNS.key)
     },
     npcStateFlags: normalizeStringRecord(slot?.npcStateFlags),
     settings: {
@@ -858,10 +878,10 @@ function normalizeCanonicalSlot(slot, slotId) {
     medals: normalizeMedals(slot?.medals),
     party: {
       activePartyMemberIds: normalizeStringArray(slot?.party?.activePartyMemberIds),
-      recruitedCompanionIds: normalizeStringArray(slot?.party?.recruitedCompanionIds)
+      recruitedCompanionIds: normalizeStableIdArray(slot?.party?.recruitedCompanionIds, STABLE_ID_PATTERNS.companion)
     },
     inventory: {
-      inventoryItems: normalizeStringArray(slot?.inventory?.inventoryItems),
+      inventoryItems: normalizeStableIdArray(slot?.inventory?.inventoryItems, STABLE_ID_PATTERNS.item),
       equippedGear: normalizeStringValueRecord(slot?.inventory?.equippedGear)
     }
   };
@@ -900,6 +920,7 @@ function loadSlots() {
     }
 
     const normalized = [];
+    let shouldPersistNormalizedSlots = parsed.length !== SLOT_COUNT;
 
     for (let index = 0; index < SLOT_COUNT; index += 1) {
       const rawSlot = parsed[index];
@@ -907,11 +928,22 @@ function loadSlots() {
 
       if (!rawSlot) {
         normalized.push(createCanonicalSlot(slotId));
+        shouldPersistNormalizedSlots = true;
         continue;
       }
 
       const isCanonical = rawSlot.metadata && rawSlot.playerIdentity && rawSlot.playerWorldPosition && rawSlot.worldProgress;
-      normalized.push(isCanonical ? normalizeCanonicalSlot(rawSlot, slotId) : normalizeLegacySlot(rawSlot, slotId));
+      const normalizedSlot = isCanonical ? normalizeCanonicalSlot(rawSlot, slotId) : normalizeLegacySlot(rawSlot, slotId);
+
+      if (!isCanonical || JSON.stringify(rawSlot) !== JSON.stringify(normalizedSlot)) {
+        shouldPersistNormalizedSlots = true;
+      }
+
+      normalized.push(normalizedSlot);
+    }
+
+    if (shouldPersistNormalizedSlots) {
+      saveSlots(normalized);
     }
 
     return normalized;
@@ -1732,7 +1764,7 @@ function writeCurrentGameToSlot() {
       storyModeChoice: slot.playerIdentity.storyModeChoice
     },
     playerWorldPosition: {
-      currentMapId: DEFAULT_MAP_ID,
+      currentMapId: slot.playerWorldPosition.currentMapId,
       playerX: pos.x,
       playerY: pos.y
     },
