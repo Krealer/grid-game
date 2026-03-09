@@ -3631,6 +3631,7 @@ function getEventClientPoint(event) {
 
 function addUnifiedPressListener(element, onPress) {
   let suppressNextClick = false;
+  const supportsPointerEvents = typeof window !== 'undefined' && 'PointerEvent' in window;
 
   element.addEventListener('click', (event) => {
     if (suppressNextClick) {
@@ -3641,27 +3642,27 @@ function addUnifiedPressListener(element, onPress) {
     onPress(event);
   });
 
-  element.addEventListener('pointerup', (event) => {
-    if (event.pointerType === 'mouse') {
-      return;
-    }
-
+  const handleTouchLikePress = (event) => {
     const handled = onPress(event) === true;
     suppressNextClick = handled;
 
     if (handled && event.cancelable) {
       event.preventDefault();
     }
-  });
+  };
 
-  element.addEventListener('touchend', (event) => {
-    const handled = onPress(event) === true;
-    suppressNextClick = handled;
+  if (supportsPointerEvents) {
+    element.addEventListener('pointerup', (event) => {
+      if (event.pointerType === 'mouse') {
+        return;
+      }
 
-    if (handled && event.cancelable) {
-      event.preventDefault();
-    }
-  }, { passive: false });
+      handleTouchLikePress(event);
+    });
+    return;
+  }
+
+  element.addEventListener('touchend', handleTouchLikePress, { passive: false });
 }
 
 function bindButtonPress(element, onPress) {
