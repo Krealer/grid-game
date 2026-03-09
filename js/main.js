@@ -13,7 +13,7 @@ import { gameState, playerState, dialogueState, battleState } from './state/game
 import { createScreenRouter } from './ui/screenRouter.js';
 import { renderSaveSlotsUI } from './ui/saveSlotsUI.js';
 import { formatText } from './utils/helpers.js';
-import { calculateEquipmentBonuses, canEquipItemForSlot, createStarterGearInventoryForClass, normalizeEquippedGear, normalizeOwnedGearItemIds } from './systems/gearSystem.js';
+import { calculateEquipmentBonuses, canEquipItemForSlot, createStarterGearInventoryForClass, enforceUniqueEquippedItems, normalizeEquippedGear, normalizeEquippedGearByMember, normalizeOwnedGearItemIds } from './systems/gearSystem.js';
 import { createBattlePartyData as createBattlePartyDataFromPartySystem, getFirstActiveCompanionBattler as getFirstActiveCompanionBattlerFromPartySystem, updatePartyBattleMemberHp as updatePartyBattleMemberHpFromPartySystem } from './systems/partySystem.js';
 import { resolveCompanionAction, resolveEnemyActionAgainstPlayer } from './systems/battleSystem.js';
 import { buildBattleSubtitle } from './ui/battleUI.js';
@@ -133,6 +133,7 @@ const medalsList = document.getElementById('medals-list');
 const debugOverlay = document.getElementById('debug-overlay');
 
 let activeScreenName = 'language';
+let inventoryTargetMemberId = MAIN_PARTY_MEMBER_ID;
 let debugOverlayVisible = false;
 let lastClickedDestination = null;
 let suppressNextGridClick = false;
@@ -402,16 +403,75 @@ function getAttackForClass(className) {
   return getPlayerStatsByClass(className).attack;
 }
 
+function getAllKnownMemberIdsForSlot(slot) {
+  const memberStates = normalizePartyMemberStates(slot?.party?.memberStates, slot?.playerIdentity);
+  return Object.keys(memberStates);
+}
+
+function getEquippedGearByMember(slot) {
+  const validMemberIds = getAllKnownMemberIdsForSlot(slot);
+  const normalizedByMember = normalizeEquippedGearByMember(slot?.inventory?.equippedGearByMember, validMemberIds);
+  if (!normalizedByMember[MAIN_PARTY_MEMBER_ID]) {
+    normalizedByMember[MAIN_PARTY_MEMBER_ID] = normalizeEquippedGear(slot?.inventory?.equippedGear);
+  }
+  return sanitizeEquippedGearByMember(slot, slot?.inventory?.inventoryItems, normalizedByMember);
+}
+
 function getSlotInventory(slot) {
   return {
     inventoryItems: normalizeOwnedGearItemIds(slot?.inventory?.inventoryItems),
-    equippedGear: normalizeEquippedGear(slot?.inventory?.equippedGear)
+    equippedGearByMember: getEquippedGearByMember(slot)
   };
 }
 
-function getEffectiveMemberStats(memberState, slot) {
+function getMemberEquippedGear(slot, memberId) {
   const inventory = getSlotInventory(slot);
-  const bonuses = calculateEquipmentBonuses(inventory.equippedGear, memberState.className);
+  return inventory.equippedGearByMember[memberId] || { ...DEFAULT_EQUIPPED_GEAR };
+}
+
+function findEquippedOwnerByItemId(equippedGearByMember, itemId) {
+  if (!itemId) {
+    return null;
+  }
+
+  return Object.entries(equippedGearByMember).find(([, equippedGear]) => (
+    EQUIPMENT_SLOT_ORDER.some((slotType) => equippedGear[slotType] === itemId)
+  ))?.[0] || null;
+}
+
+function sanitizeEquippedGearByMember(slot, inventoryItems, equippedGearByMember) {
+  const memberStates = normalizePartyMemberStates(slot?.party?.memberStates, slot?.playerIdentity);
+  const ownedGearItemIds = normalizeOwnedGearItemIds(inventoryItems);
+  const validMemberIds = Object.keys(memberStates);
+  const normalizedByMember = normalizeEquippedGearByMember(equippedGearByMember, validMemberIds);
+
+  validMemberIds.forEach((memberId) => {
+    const memberState = memberStates[memberId];
+    EQUIPMENT_SLOT_ORDER.forEach((slotType) => {
+      const itemId = normalizedByMember[memberId][slotType];
+      if (!itemId) {
+        return;
+      }
+
+      const canEquip = canEquipItemForSlot({
+        className: memberState.className,
+        slotType,
+        itemId,
+        ownedGearItemIds
+      });
+
+      if (!canEquip) {
+        normalizedByMember[memberId][slotType] = null;
+      }
+    });
+  });
+
+  return enforceUniqueEquippedItems(normalizedByMember, [MAIN_PARTY_MEMBER_ID]);
+}
+
+function getEffectiveMemberStats(memberState, slot) {
+  const equippedGear = getMemberEquippedGear(slot, memberState.id);
+  const bonuses = calculateEquipmentBonuses(equippedGear, memberState.className);
   return {
     ...memberState,
     maxHp: memberState.maxHp + bonuses.hpBonus,
@@ -561,7 +621,10 @@ function createCanonicalSlot(slotId) {
     },
     inventory: {
       inventoryItems: [],
-      equippedGear: { ...DEFAULT_EQUIPPED_GEAR }
+      equippedGear: { ...DEFAULT_EQUIPPED_GEAR },
+      equippedGearByMember: {
+        [MAIN_PARTY_MEMBER_ID]: { ...DEFAULT_EQUIPPED_GEAR }
+      }
     }
   };
 }
@@ -919,9 +982,23 @@ function normalizeCanonicalSlot(slot, slotId) {
     },
     inventory: {
       inventoryItems: normalizeOwnedGearItemIds(normalizeStableIdArray(slot?.inventory?.inventoryItems, STABLE_ID_PATTERNS.item)),
-      equippedGear: normalizeEquippedGear(normalizeStringValueRecord(slot?.inventory?.equippedGear))
+      equippedGear: normalizeEquippedGear(normalizeStringValueRecord(slot?.inventory?.equippedGear)),
+      equippedGearByMember: normalizeEquippedGearByMember(slot?.inventory?.equippedGearByMember, [
+        ...new Set([MAIN_PARTY_MEMBER_ID, ...Object.keys(normalizePartyMemberStates(slot?.party?.memberStates, slot?.playerIdentity))])
+      ])
     }
   };
+
+  if (!normalizedSlot.inventory.equippedGearByMember[MAIN_PARTY_MEMBER_ID]) {
+    normalizedSlot.inventory.equippedGearByMember[MAIN_PARTY_MEMBER_ID] = { ...normalizedSlot.inventory.equippedGear };
+  }
+
+  normalizedSlot.inventory.equippedGearByMember = sanitizeEquippedGearByMember(
+    normalizedSlot,
+    normalizedSlot.inventory.inventoryItems,
+    normalizedSlot.inventory.equippedGearByMember
+  );
+  normalizedSlot.inventory.equippedGear = { ...normalizedSlot.inventory.equippedGearByMember[MAIN_PARTY_MEMBER_ID] };
 
   const traversalTags = getPlayerTraversalTagsForSlot(normalizedSlot);
   const candidatePosition = normalizedSlot.playerWorldPosition;
@@ -1214,7 +1291,17 @@ function renderPartyScreen() {
     item.className = 'party-row';
     const statusKey = activeSet.has(companionId) ? 'activeLabel' : 'reserveLabel';
     const memberSummary = getPartyMemberSummary(companionId, memberStates[companionId], locale);
-    item.textContent = `${getPartyMemberDisplayName(companionId, locale)} — ${memberSummary} — ${locale[statusKey]}`;
+
+    const label = document.createElement('p');
+    label.textContent = `${getPartyMemberDisplayName(companionId, locale)} — ${memberSummary} — ${locale[statusKey]}`;
+
+    const manageButton = document.createElement('button');
+    manageButton.type = 'button';
+    manageButton.className = 'menu-option party-remove-button';
+    manageButton.dataset.manageGearMemberId = companionId;
+    manageButton.textContent = locale.manageGear;
+
+    item.append(label, manageButton);
     partyRecruitedList.append(item);
   });
 
@@ -1232,6 +1319,23 @@ function getEquipmentSlotLabelKey(slotType, className) {
   return className === 'mage' ? 'gearCape' : 'gearBoots';
 }
 
+function getMemberStateById(slot, memberId) {
+  const memberStates = normalizePartyMemberStates(slot?.party?.memberStates, slot?.playerIdentity);
+  return memberStates[memberId] || null;
+}
+
+function getInventoryTargetMember(slot) {
+  const fallbackMemberId = MAIN_PARTY_MEMBER_ID;
+  const activeId = inventoryTargetMemberId || fallbackMemberId;
+  const member = getMemberStateById(slot, activeId);
+  if (member) {
+    return member;
+  }
+
+  inventoryTargetMemberId = fallbackMemberId;
+  return getMainPartyMemberState(slot);
+}
+
 function renderInventoryScreen() {
   const locale = getLocale();
   const slot = currentSlotId ? getSlotById(currentSlotId) : null;
@@ -1243,16 +1347,18 @@ function renderInventoryScreen() {
     return;
   }
 
-  const className = slot.playerIdentity?.chosenClass || 'warrior';
   const inventory = getSlotInventory(slot);
-  const mainMember = getMainPartyMemberState(slot);
-  const effectiveMainMember = getEffectiveMemberStats(mainMember, slot);
+  const targetMember = getInventoryTargetMember(slot);
+  const className = targetMember.className;
+  const equippedGear = getMemberEquippedGear(slot, targetMember.id);
+  const effectiveMember = getEffectiveMemberStats(targetMember, slot);
+  const targetName = getPartyMemberDisplayName(targetMember.id, locale);
 
-  textNodes.inventoryHelper.textContent = locale.equipmentTitle;
-  textNodes.inventoryStats.textContent = `${locale.hp}: ${effectiveMainMember.maxHp} • ${locale.attack}: ${effectiveMainMember.attack} • ${locale.movementSpeed}: ${effectiveMainMember.movementSpeedTilesPerSecond.toFixed(1)}`;
+  textNodes.inventoryHelper.textContent = formatText(locale.equipmentTarget, { member: targetName });
+  textNodes.inventoryStats.textContent = `${locale.hp}: ${effectiveMember.maxHp} • ${locale.attack}: ${effectiveMember.attack} • ${locale.movementSpeed}: ${effectiveMember.movementSpeedTilesPerSecond.toFixed(1)}`;
 
   EQUIPMENT_SLOT_ORDER.forEach((slotType) => {
-    const equippedItemId = inventory.equippedGear[slotType];
+    const equippedItemId = equippedGear[slotType];
     const equippedItem = GEAR_ITEM_DEFINITIONS[equippedItemId];
     const row = document.createElement('li');
     row.className = 'party-row';
@@ -1261,8 +1367,18 @@ function renderInventoryScreen() {
     slotLabel.textContent = `${locale[getEquipmentSlotLabelKey(slotType, className)]}: ${equippedItem ? locale[equippedItem.nameKey] : locale.empty}`;
     row.append(slotLabel);
 
-    inventory.inventoryItems.forEach((itemId) => {
-      const item = GEAR_ITEM_DEFINITIONS[itemId];
+    const unequipButton = document.createElement('button');
+    unequipButton.type = 'button';
+    unequipButton.className = 'menu-option party-remove-button';
+    unequipButton.dataset.equipMemberId = targetMember.id;
+    unequipButton.dataset.equipSlotType = slotType;
+    unequipButton.dataset.unequip = '1';
+    unequipButton.textContent = locale.unequip;
+    unequipButton.disabled = !equippedItemId;
+    row.append(unequipButton);
+
+    inventory.inventoryItems.forEach((gearItemId) => {
+      const item = GEAR_ITEM_DEFINITIONS[gearItemId];
       if (!item || item.slotType !== slotType || !item.allowedClasses.includes(className)) {
         return;
       }
@@ -1270,6 +1386,7 @@ function renderInventoryScreen() {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'menu-option party-remove-button';
+      button.dataset.equipMemberId = targetMember.id;
       button.dataset.equipSlotType = slotType;
       button.dataset.equipItemId = item.itemId;
       button.textContent = `${locale.equip}: ${locale[item.nameKey]}`;
@@ -1283,7 +1400,7 @@ function renderInventoryScreen() {
   });
 }
 
-function handleEquipItem(slotType, itemId) {
+function handleEquipItem(memberId, slotType, itemId) {
   if (!currentSlotId) {
     return;
   }
@@ -1293,32 +1410,56 @@ function handleEquipItem(slotType, itemId) {
     return;
   }
 
-  const className = slot.playerIdentity?.chosenClass || 'warrior';
-  const inventory = getSlotInventory(slot);
-  const allowed = canEquipItemForSlot({
-    className,
-    slotType,
-    itemId,
-    ownedGearItemIds: inventory.inventoryItems
-  });
-
-  if (!allowed) {
+  const targetMember = getMemberStateById(slot, memberId);
+  if (!targetMember) {
     return;
+  }
+
+  const className = targetMember.className;
+  const inventory = getSlotInventory(slot);
+  const equippedGearByMember = {
+    ...inventory.equippedGearByMember,
+    [memberId]: { ...getMemberEquippedGear(slot, memberId) }
+  };
+
+  if (itemId) {
+    const allowed = canEquipItemForSlot({
+      className,
+      slotType,
+      itemId,
+      ownedGearItemIds: inventory.inventoryItems
+    });
+
+    if (!allowed) {
+      return;
+    }
+
+    const ownerId = findEquippedOwnerByItemId(equippedGearByMember, itemId);
+    if (ownerId && ownerId !== memberId) {
+      EQUIPMENT_SLOT_ORDER.forEach((iterSlotType) => {
+        if (equippedGearByMember[ownerId][iterSlotType] === itemId) {
+          equippedGearByMember[ownerId][iterSlotType] = null;
+        }
+      });
+    }
+
+    equippedGearByMember[memberId][slotType] = itemId;
+  } else {
+    equippedGearByMember[memberId][slotType] = null;
   }
 
   updateSlot(currentSlotId, {
     inventory: {
       inventoryItems: inventory.inventoryItems,
-      equippedGear: {
-        ...inventory.equippedGear,
-        [slotType]: itemId
-      }
+      equippedGear: { ...equippedGearByMember[MAIN_PARTY_MEMBER_ID] },
+      equippedGearByMember
     }
   });
 
   const updatedSlot = getSlotById(currentSlotId);
   const updatedMainMember = getMainPartyMemberState(updatedSlot);
   updateMainPartyMemberHp(currentSlotId, Math.min(updatedMainMember.currentHp, getEffectiveMemberStats(updatedMainMember, updatedSlot).maxHp));
+  renderPartyScreen();
   renderInventoryScreen();
   renderInfoDetails();
 }
@@ -1719,11 +1860,13 @@ function getCompanionOffensiveSkills(companionId) {
     .map((skill) => ({ ...skill }));
 }
 
-function createCompanionBattleData(companionId, memberState) {
+function createCompanionBattleData(companionId, memberState, slot) {
   const companion = COMPANION_DEFINITIONS[companionId];
   if (!companion || !memberState) {
     return null;
   }
+
+  const effectiveMember = getEffectiveMemberStats(memberState, slot);
 
   return {
     id: companionId,
@@ -1734,9 +1877,9 @@ function createCompanionBattleData(companionId, memberState) {
     level: memberState.level,
     currentExp: memberState.currentExp,
     expToNextLevel: memberState.expToNextLevel,
-    maxHp: memberState.maxHp,
-    hp: memberState.currentHp,
-    attack: memberState.attack,
+    maxHp: effectiveMember.maxHp,
+    hp: Math.max(0, Math.min(effectiveMember.maxHp, memberState.currentHp)),
+    attack: effectiveMember.attack,
     skills: getCompanionOffensiveSkills(companionId)
   };
 }
@@ -1777,7 +1920,8 @@ function updatePartyBattleMemberHp(slotId, partyMembers = []) {
   updatePartyBattleMemberHpFromPartySystem(slotId, partyMembers, {
     getSlotById,
     updateSlot,
-    normalizePartyMemberStates
+    normalizePartyMemberStates,
+    getEffectiveMemberStats
   });
 }
 
@@ -2729,6 +2873,7 @@ function openGameMenu() {
 }
 
 function openInventoryScreen() {
+  inventoryTargetMemberId = MAIN_PARTY_MEMBER_ID;
   renderInventoryScreen();
   showScreen('inventory');
 }
@@ -3588,7 +3733,10 @@ elementButtons.forEach((button) => {
       },
       inventory: {
         inventoryItems: [],
-        equippedGear: { ...DEFAULT_EQUIPPED_GEAR }
+        equippedGear: { ...DEFAULT_EQUIPPED_GEAR },
+        equippedGearByMember: {
+          [MAIN_PARTY_MEMBER_ID]: { ...DEFAULT_EQUIPPED_GEAR }
+        }
       },
       settings: {
         showCoordinates: false
@@ -3631,7 +3779,10 @@ classButtons.forEach((button) => {
       },
       inventory: {
         inventoryItems: createStarterGearInventoryForClass(button.dataset.class),
-        equippedGear: { ...DEFAULT_EQUIPPED_GEAR }
+        equippedGear: { ...DEFAULT_EQUIPPED_GEAR },
+        equippedGearByMember: {
+          [MAIN_PARTY_MEMBER_ID]: { ...DEFAULT_EQUIPPED_GEAR }
+        }
       }
     });
 
@@ -3690,13 +3841,27 @@ partyActiveList.addEventListener('click', (event) => {
   removeCompanionFromActiveParty(removeButton.dataset.removeCompanionId);
 });
 
+partyRecruitedList.addEventListener('click', (event) => {
+  const manageButton = event.target.closest('button[data-manage-gear-member-id]');
+  if (!manageButton || screens.party.hidden) {
+    return;
+  }
+
+  inventoryTargetMemberId = manageButton.dataset.manageGearMemberId;
+  renderInventoryScreen();
+  showScreen('inventory');
+});
+
 inventoryList.addEventListener('click', (event) => {
-  const equipButton = event.target.closest('button[data-equip-slot-type][data-equip-item-id]');
+  const equipButton = event.target.closest('button[data-equip-member-id][data-equip-slot-type]');
   if (!equipButton || screens.inventory.hidden) {
     return;
   }
 
-  handleEquipItem(equipButton.dataset.equipSlotType, equipButton.dataset.equipItemId);
+  const memberId = equipButton.dataset.equipMemberId;
+  const slotType = equipButton.dataset.equipSlotType;
+  const itemId = equipButton.dataset.unequip ? null : equipButton.dataset.equipItemId;
+  handleEquipItem(memberId, slotType, itemId);
 });
 
 

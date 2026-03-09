@@ -19,6 +19,20 @@ export function normalizeEquippedGear(equippedGear) {
   return normalized;
 }
 
+export function normalizeEquippedGearByMember(equippedGearByMember, validMemberIds = []) {
+  const validSet = new Set(validMemberIds.filter((memberId) => typeof memberId === 'string'));
+  const source = equippedGearByMember && typeof equippedGearByMember === 'object' && !Array.isArray(equippedGearByMember)
+    ? equippedGearByMember
+    : {};
+
+  const normalized = {};
+  validSet.forEach((memberId) => {
+    normalized[memberId] = normalizeEquippedGear(source[memberId]);
+  });
+
+  return normalized;
+}
+
 export function canClassEquipItem(className, itemDefinition) {
   if (!className || !itemDefinition) {
     return false;
@@ -64,4 +78,29 @@ export function createStarterGearInventoryForClass(className) {
     const item = GEAR_ITEM_DEFINITIONS[itemId];
     return item.allowedClasses.includes(className);
   }));
+}
+
+export function enforceUniqueEquippedItems(equippedGearByMember, preferredOwnerOrder = []) {
+  const normalized = {};
+  const seenItems = new Set();
+  const orderedMemberIds = [
+    ...preferredOwnerOrder,
+    ...Object.keys(equippedGearByMember).filter((memberId) => !preferredOwnerOrder.includes(memberId))
+  ];
+
+  orderedMemberIds.forEach((memberId) => {
+    const equippedGear = normalizeEquippedGear(equippedGearByMember[memberId]);
+    normalized[memberId] = { ...equippedGear };
+
+    EQUIPMENT_SLOT_ORDER.forEach((slotType) => {
+      const itemId = equippedGear[slotType];
+      if (!itemId || seenItems.has(itemId)) {
+        normalized[memberId][slotType] = null;
+        return;
+      }
+      seenItems.add(itemId);
+    });
+  });
+
+  return normalized;
 }

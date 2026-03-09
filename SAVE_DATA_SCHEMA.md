@@ -71,6 +71,18 @@ This document defines the **canonical save schema** for this project.
       "headOrArmorSlot": "item_rusted_armour",
       "weaponSlot": null,
       "mobilitySlot": null
+    },
+    "equippedGearByMember": {
+      "main_player": {
+        "headOrArmorSlot": "item_rusted_armour",
+        "weaponSlot": null,
+        "mobilitySlot": null
+      },
+      "companion_rowan_01": {
+        "headOrArmorSlot": null,
+        "weaponSlot": null,
+        "mobilitySlot": null
+      }
     }
   }
 }
@@ -115,7 +127,8 @@ This document defines the **canonical save schema** for this project.
     - `attack`: persistent attack stat that scales on level-up.
 - `inventory`: inventory/gear state.
   - `inventoryItems`: owned gear item ids.
-  - `equippedGear`: equipped item ids by stable slot key (`headOrArmorSlot`, `weaponSlot`, `mobilitySlot`) with nullable values.
+  - `equippedGear`: player-only compatibility mirror of `equippedGearByMember.main_player` by stable slot key (`headOrArmorSlot`, `weaponSlot`, `mobilitySlot`) with nullable values.
+  - `equippedGearByMember`: per-party-member equipped item ids keyed by stable member id (`main_player`, `companion_...`), each value using the same three stable slot keys.
 
 ## Stable ID conventions
 

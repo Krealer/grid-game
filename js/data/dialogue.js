@@ -25,7 +25,7 @@ const STARTER_GUIDE_DIALOGUE_NODES = {
 const STARTER_GUIDE_DIALOGUE_FLOW = { entryNodeId: 'intro_question', postDoorNodeByStoryChoice: { story: 'post_door_story', no_story: 'post_door_no_story' }, repeatNodeByStoryChoice: { story: 'followup_story', no_story: 'followup_no_story' } };
 const RECRUIT_ROWAN_DIALOGUE_NODES = {
   intro: { id: 'intro', speaker: 'npc', textKey: 'npcRecruitRowanIntro', nextNodeId: 'ask_join' },
-  ask_join: { id: 'ask_join', speaker: 'npc', textKey: 'npcRecruitRowanPrompt', choices: [{ id: 'yes', textKey: 'yes', nextNodeId: 'joined', effects: { recruitCompanionId: 'companion_rowan_01', recruitNpcId: 'npc_recruit_01', recruitNpcFlag: 'npc_recruit_01_recruited' } }, { id: 'no', textKey: 'no', nextNodeId: 'declined' }] },
+  ask_join: { id: 'ask_join', speaker: 'npc', textKey: 'npcRecruitRowanPrompt', choices: [{ id: 'yes', textKey: 'yes', nextNodeId: 'joined', effects: { recruitCompanionId: 'companion_rowan_01', recruitNpcId: 'npc_recruit_01', recruitNpcFlag: 'npc_recruit_01_recruited', grantGearItemId: 'item_rusted_sword' } }, { id: 'no', textKey: 'no', nextNodeId: 'declined' }] },
   joined: { id: 'joined', speaker: 'npc', textKey: 'npcRecruitRowanJoined', nextNodeId: null },
   declined: { id: 'declined', speaker: 'npc', textKey: 'npcRecruitRowanDeclined', nextNodeId: null },
   recruited_inactive: { id: 'recruited_inactive', speaker: 'npc', textKey: 'npcRecruitRowanReturned', nextNodeId: null }
