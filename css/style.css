@@ -324,6 +324,36 @@ h1 {
   transform: rotate(-24deg);
 }
 
+.enemy-piece-species-lava_turtle {
+  border-radius: 30% 30% 38% 38%;
+  border: 2px solid #fff1db;
+  background: linear-gradient(180deg, #ff7a24 0%, #c5421c 100%);
+  box-shadow: inset 0 0 0 2px #7e2a14;
+}
+
+.enemy-piece-species-lava_turtle::before {
+  content: '';
+  position: absolute;
+  left: 16%;
+  top: 18%;
+  width: 68%;
+  height: 56%;
+  border-radius: 36%;
+  background: repeating-linear-gradient(135deg, #5c1c11 0 6px, #8f3016 6px 12px);
+}
+
+.enemy-piece-species-lava_turtle::after {
+  content: '';
+  position: absolute;
+  top: 30%;
+  right: -14%;
+  width: 22%;
+  height: 22%;
+  border-radius: 50%;
+  background: #ffbb62;
+  border: 2px solid #ffe8bc;
+}
+
 .npc-piece {
   background: #ffffff;
   border: 2px solid #34c759;
@@ -988,6 +1018,60 @@ html[dir='rtl'] .dialogue-choice {
 
 .tree-monster--earth .tree-monster__crown {
   background: linear-gradient(180deg, #5aa044 0%, #326a2f 100%);
+}
+
+.lava-turtle {
+  width: 90%;
+  height: 86%;
+  position: relative;
+}
+
+.lava-turtle__shell {
+  position: absolute;
+  left: 50%;
+  top: 16%;
+  width: 66%;
+  height: 56%;
+  transform: translateX(-50%);
+  border-radius: 40% 40% 32% 32%;
+  border: 3px solid #fff3da;
+  background: repeating-linear-gradient(135deg, #5f1f0f 0 8px, #953315 8px 16px);
+}
+
+.lava-turtle__head {
+  position: absolute;
+  right: 2%;
+  top: 36%;
+  width: 24%;
+  height: 24%;
+  border-radius: 50%;
+  border: 3px solid #ffeacd;
+  background: linear-gradient(180deg, #ffbf6a 0%, #f26d2f 100%);
+}
+
+.lava-turtle__leg {
+  position: absolute;
+  width: 18%;
+  height: 16%;
+  border-radius: 40%;
+  border: 2px solid #ffdcb0;
+  background: #de5a25;
+}
+
+.lava-turtle__leg--front-left { left: 18%; top: 50%; }
+.lava-turtle__leg--front-right { left: 40%; top: 52%; }
+.lava-turtle__leg--rear-left { left: 16%; top: 68%; }
+.lava-turtle__leg--rear-right { left: 40%; top: 70%; }
+
+.lava-turtle__flame {
+  position: absolute;
+  left: 50%;
+  top: -2%;
+  width: 20%;
+  height: 26%;
+  transform: translateX(-50%);
+  border-radius: 60% 40% 70% 30% / 70% 30% 60% 40%;
+  background: linear-gradient(180deg, #fff69d 0%, #ff9d1d 50%, #ea4314 100%);
 }
 
 .battle-options {
