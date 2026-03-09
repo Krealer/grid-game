@@ -1,7 +1,7 @@
 const GRID_SIZE = 12;
 const TILE_SPEED_PER_SECOND = 2;
 const TILE_STEP_DURATION = 1 / TILE_SPEED_PER_SECOND;
-const SAVE_SCHEMA_VERSION = 1;
+const SAVE_SCHEMA_VERSION = 2;
 const DEFAULT_MAP_ID = 'map_starter_field';
 const STABLE_ID_PATTERNS = {
   map: /^map_[a-z0-9]+(?:_[a-z0-9]+)*$/,
@@ -39,6 +39,10 @@ const STARTER_DOOR_EVENT_FLAG = 'event_starter_door_spawned';
 const STARTER_DOOR = { id: 'door_starter_exit', type: 'door', x: 10, y: 10 };
 const SECOND_MAP_ID = 'map_second_field';
 const SECOND_MAP_ENTRY = { x: 1, y: 1 };
+const SECOND_MAP_HEALING_TILES = [
+  { id: 'healing_tile_second_01', type: 'healing_tile', x: 8, y: 10 }
+];
+const MAIN_PARTY_MEMBER_ID = 'main_player';
 
 const STARTER_NPC_TEMPLATE = { id: 'npc_starter_guide', type: 'npc', x: 11, y: 11, nameKey: 'npcGuide' };
 
@@ -201,7 +205,8 @@ const MAP_DEFINITIONS = {
     spawn: SECOND_MAP_ENTRY,
     enemies: SECOND_MAP_ENEMY_STARTS,
     npcs: [],
-    doors: []
+    doors: [],
+    healingTiles: SECOND_MAP_HEALING_TILES
   }
 };
 
@@ -932,6 +937,81 @@ function isWalkable(x, y) {
   return isGround(x, y) && !isEnemyTile(x, y) && !isNpcTile(x, y);
 }
 
+function getMaxHpForClass(className) {
+  return getPlayerStatsByClass(className).hp;
+}
+
+function createMainPartyMemberState(className, element, currentHp = null) {
+  const normalizedClass = normalizeStringEnum(className, ['warrior', 'mage'], 'warrior');
+  const normalizedElement = normalizeStringEnum(element, ['fire', 'water', 'earth'], 'fire');
+  const maxHp = getMaxHpForClass(normalizedClass);
+  const normalizedCurrentHp = Number.isFinite(currentHp)
+    ? Math.max(0, Math.min(maxHp, Math.floor(currentHp)))
+    : maxHp;
+
+  return {
+    id: MAIN_PARTY_MEMBER_ID,
+    className: normalizedClass,
+    element: normalizedElement,
+    currentHp: normalizedCurrentHp,
+    maxHp
+  };
+}
+
+function normalizePartyMemberStates(memberStates, playerIdentity) {
+  const identityClass = normalizeStringEnum(playerIdentity?.chosenClass, ['warrior', 'mage'], 'warrior');
+  const identityElement = normalizeStringEnum(playerIdentity?.chosenElement, ['fire', 'water', 'earth'], 'fire');
+  const defaultMainState = createMainPartyMemberState(identityClass, identityElement);
+
+  if (!memberStates || typeof memberStates !== 'object' || Array.isArray(memberStates)) {
+    return {
+      [MAIN_PARTY_MEMBER_ID]: defaultMainState
+    };
+  }
+
+  const normalizedEntries = Object.entries(memberStates).reduce((result, [memberId, memberState]) => {
+    if (typeof memberId !== 'string' || !memberState || typeof memberState !== 'object' || Array.isArray(memberState)) {
+      return result;
+    }
+
+    const className = normalizeStringEnum(memberState.className, ['warrior', 'mage'], identityClass);
+    const element = normalizeStringEnum(memberState.element, ['fire', 'water', 'earth'], identityElement);
+    const maxHp = Number.isFinite(memberState.maxHp) ? Math.max(1, Math.floor(memberState.maxHp)) : getMaxHpForClass(className);
+    const currentHp = Number.isFinite(memberState.currentHp) ? Math.max(0, Math.min(maxHp, Math.floor(memberState.currentHp))) : maxHp;
+
+    result[memberId] = {
+      id: memberId,
+      className,
+      element,
+      currentHp,
+      maxHp
+    };
+
+    return result;
+  }, {});
+
+  const mainState = normalizedEntries[MAIN_PARTY_MEMBER_ID];
+  normalizedEntries[MAIN_PARTY_MEMBER_ID] = mainState
+    ? {
+      ...mainState,
+      id: MAIN_PARTY_MEMBER_ID,
+      className: identityClass,
+      element: identityElement,
+      maxHp: getMaxHpForClass(identityClass),
+      currentHp: Math.max(0, Math.min(getMaxHpForClass(identityClass), mainState.currentHp))
+    }
+    : defaultMainState;
+
+  return normalizedEntries;
+}
+
+function getMainPartyMemberState(slot) {
+  const className = slot?.playerIdentity?.chosenClass || 'warrior';
+  const element = slot?.playerIdentity?.chosenElement || 'fire';
+  const memberStates = normalizePartyMemberStates(slot?.party?.memberStates, slot?.playerIdentity);
+  return memberStates[MAIN_PARTY_MEMBER_ID] || createMainPartyMemberState(className, element);
+}
+
 function createCanonicalSlot(slotId) {
   const now = new Date().toISOString();
 
@@ -964,8 +1044,11 @@ function createCanonicalSlot(slotId) {
     },
     medals: [],
     party: {
-      activePartyMemberIds: [],
-      recruitedCompanionIds: []
+      activePartyMemberIds: [MAIN_PARTY_MEMBER_ID],
+      recruitedCompanionIds: [],
+      memberStates: {
+        [MAIN_PARTY_MEMBER_ID]: createMainPartyMemberState('warrior', 'fire')
+      }
     },
     inventory: {
       inventoryItems: [],
@@ -1177,8 +1260,11 @@ function normalizeCanonicalSlot(slot, slotId) {
     },
     medals: normalizeMedals(slot?.medals),
     party: {
-      activePartyMemberIds: normalizeStringArray(slot?.party?.activePartyMemberIds),
-      recruitedCompanionIds: normalizeStableIdArray(slot?.party?.recruitedCompanionIds, STABLE_ID_PATTERNS.companion)
+      activePartyMemberIds: normalizeStringArray(slot?.party?.activePartyMemberIds).length > 0
+        ? normalizeStringArray(slot?.party?.activePartyMemberIds)
+        : [MAIN_PARTY_MEMBER_ID],
+      recruitedCompanionIds: normalizeStableIdArray(slot?.party?.recruitedCompanionIds, STABLE_ID_PATTERNS.companion),
+      memberStates: normalizePartyMemberStates(slot?.party?.memberStates, slot?.playerIdentity)
     },
     inventory: {
       inventoryItems: normalizeStableIdArray(slot?.inventory?.inventoryItems, STABLE_ID_PATTERNS.item),
@@ -1196,6 +1282,7 @@ function normalizeLegacySlot(slot, slotId) {
   canonical.playerWorldPosition.playerX = position.x;
   canonical.playerWorldPosition.playerY = position.y;
   canonical.worldProgress.defeatedEnemyIds = normalizeDefeatedEnemyIds(slot?.defeatedEnemyIds);
+  canonical.party.memberStates = normalizePartyMemberStates(canonical.party.memberStates, canonical.playerIdentity);
   return canonical;
 }
 
@@ -1619,18 +1706,74 @@ function getPlayerOffensiveSkills(className, element) {
 }
 
 function createPlayerBattleData(slot) {
-  const chosenClass = slot.playerIdentity?.chosenClass || 'warrior';
-  const chosenElement = slot.playerIdentity?.chosenElement || 'fire';
+  const mainMember = getMainPartyMemberState(slot);
+  const chosenClass = mainMember.className || slot.playerIdentity?.chosenClass || 'warrior';
+  const chosenElement = mainMember.element || slot.playerIdentity?.chosenElement || 'fire';
   const stats = getPlayerStatsByClass(chosenClass);
 
   return {
     class: chosenClass,
     element: chosenElement,
     maxHp: stats.hp,
-    hp: stats.hp,
+    hp: Math.max(0, Math.min(stats.hp, mainMember.currentHp)),
     attack: stats.attack,
     skills: getPlayerOffensiveSkills(chosenClass, chosenElement)
   };
+}
+
+function updateMainPartyMemberHp(slotId, currentHp) {
+  const slot = getSlotById(slotId);
+  if (!slot) {
+    return;
+  }
+
+  const currentMainState = getMainPartyMemberState(slot);
+  const normalizedHp = Math.max(0, Math.min(currentMainState.maxHp, Math.floor(currentHp)));
+
+  updateSlot(slotId, {
+    party: {
+      activePartyMemberIds: slot.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID],
+      memberStates: {
+        ...(slot.party?.memberStates || {}),
+        [MAIN_PARTY_MEMBER_ID]: {
+          ...currentMainState,
+          currentHp: normalizedHp
+        }
+      }
+    }
+  });
+}
+
+function healActivePartyToFull(slotId) {
+  const slot = getSlotById(slotId);
+  if (!slot) {
+    return false;
+  }
+
+  const activeIds = slot.party?.activePartyMemberIds?.length
+    ? slot.party.activePartyMemberIds
+    : [MAIN_PARTY_MEMBER_ID];
+  const memberStates = normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity);
+
+  activeIds.forEach((memberId) => {
+    const member = memberStates[memberId];
+    if (!member) {
+      return;
+    }
+    memberStates[memberId] = {
+      ...member,
+      currentHp: member.maxHp
+    };
+  });
+
+  updateSlot(slotId, {
+    party: {
+      activePartyMemberIds: activeIds,
+      memberStates
+    }
+  });
+
+  return true;
 }
 
 function clampHp(value) {
@@ -1705,6 +1848,10 @@ function resolveDropMessage(enemy) {
 }
 
 function endBattleVictory() {
+  if (currentSlotId && battleState.player) {
+    updateMainPartyMemberHp(currentSlotId, battleState.player.hp);
+  }
+
   const dropResult = resolveDropMessage(battleState.enemy);
 
   if (battleState.enemyId) {
@@ -1726,6 +1873,10 @@ function endBattleVictory() {
 }
 
 function endBattleDefeat() {
+  if (currentSlotId && battleState.player) {
+    updateMainPartyMemberHp(currentSlotId, battleState.player.hp);
+  }
+
   battleState.menu = BATTLE_MENUS.ROOT;
   renderDefeatScreen();
   showScreen('defeat');
@@ -2470,14 +2621,41 @@ function createDoorPiece(door) {
   return doorPiece;
 }
 
+function getHealingTilesForMap(mapId = currentMapId) {
+  return getMapDefinition(mapId).healingTiles || [];
+}
+
+function getHealingTileAt(x, y, mapId = currentMapId) {
+  return getHealingTilesForMap(mapId).find((tile) => tile.x === x && tile.y === y) || null;
+}
+
+function createHealingTilePiece(tile) {
+  const healingPiece = document.createElement('div');
+  healingPiece.className = 'healing-tile-piece';
+
+  const tilePercent = 100 / GRID_SIZE;
+  const tokenSizePercent = tilePercent * 0.68;
+  const leftPercent = (tile.x * tilePercent) + (tilePercent * 0.16);
+  const topPercent = (tile.y * tilePercent) + (tilePercent * 0.16);
+
+  healingPiece.style.width = `${tokenSizePercent}%`;
+  healingPiece.style.height = `${tokenSizePercent}%`;
+  healingPiece.style.left = `${leftPercent}%`;
+  healingPiece.style.top = `${topPercent}%`;
+
+  return healingPiece;
+}
+
 function buildGrid() {
   const fragment = document.createDocumentFragment();
+  const healingTileLookup = new Set(getHealingTilesForMap().map((tile) => `${tile.x},${tile.y}`));
 
   for (let y = 0; y < GRID_SIZE; y += 1) {
     for (let x = 0; x < GRID_SIZE; x += 1) {
       const tile = document.createElement('button');
       tile.type = 'button';
-      tile.className = `grid-tile ${isGround(x, y) ? 'tile-ground' : 'tile-wall'}`;
+      const isHealingTile = healingTileLookup.has(`${x},${y}`);
+      tile.className = `grid-tile ${isGround(x, y) ? 'tile-ground' : 'tile-wall'}${isHealingTile ? ' tile-healing' : ''}`;
       tile.dataset.x = String(x);
       tile.dataset.y = String(y);
       tile.setAttribute('role', 'gridcell');
@@ -2494,9 +2672,10 @@ function buildGrid() {
 
   gridBoard.innerHTML = '';
   const door = getStarterDoorForMap();
+  const healingPieces = getHealingTilesForMap().map((tile) => createHealingTilePiece(tile));
   const npcPiece = npcState ? [createNpcPiece(npcState)] : [];
   const doorPieces = door ? [createDoorPiece(door)] : [];
-  gridBoard.append(fragment, ...doorPieces, playerPiece, ...enemyStates.map((enemy) => createEnemyPiece(enemy)), ...npcPiece);
+  gridBoard.append(fragment, ...healingPieces, ...doorPieces, playerPiece, ...enemyStates.map((enemy) => createEnemyPiece(enemy)), ...npcPiece);
   applyCoordinateVisibility();
   updatePlayerPiece();
 }
@@ -2641,6 +2820,10 @@ function tryInteractWithEntity(tileX, tileY) {
 }
 
 function runFromBattle() {
+  if (currentSlotId && battleState.player) {
+    updateMainPartyMemberHp(currentSlotId, battleState.player.hp);
+  }
+
   battleState.menu = BATTLE_MENUS.ROOT;
   battleState.enemyId = null;
   battleState.enemy = null;
@@ -2700,6 +2883,19 @@ function handleDefeatReturnToMenu() {
   goToMenuScreen();
 }
 
+function tryActivateHealingTileAtPlayerPosition() {
+  if (!currentSlotId) {
+    return;
+  }
+
+  const healingTile = getHealingTileAt(playerState.tileX, playerState.tileY);
+  if (!healingTile) {
+    return;
+  }
+
+  healActivePartyToFull(currentSlotId);
+}
+
 function animationStep(timestamp) {
   if (!screens.game.hidden && playerState.moving) {
     const dt = playerState.lastTimestamp ? (timestamp - playerState.lastTimestamp) / 1000 : 0;
@@ -2709,6 +2905,7 @@ function animationStep(timestamp) {
     if (playerState.stepElapsed >= TILE_STEP_DURATION) {
       playerState.tileX = playerState.stepToX;
       playerState.tileY = playerState.stepToY;
+      tryActivateHealingTileAtPlayerPosition();
       beginNextStep();
       renderInfoDetails();
     }
@@ -2899,8 +3096,11 @@ elementButtons.forEach((button) => {
       npcStateFlags: {},
       medals: [],
       party: {
-        activePartyMemberIds: [],
-        recruitedCompanionIds: []
+        activePartyMemberIds: [MAIN_PARTY_MEMBER_ID],
+        recruitedCompanionIds: [],
+        memberStates: {
+          [MAIN_PARTY_MEMBER_ID]: createMainPartyMemberState('warrior', button.dataset.element)
+        }
       },
       inventory: {
         inventoryItems: [],
@@ -2920,6 +3120,9 @@ classButtons.forEach((button) => {
       return;
     }
 
+    const slotBeforeClassUpdate = getSlotById(currentSlotId);
+    const chosenElement = slotBeforeClassUpdate?.playerIdentity?.chosenElement || 'fire';
+
     updateSlot(currentSlotId, {
       playerIdentity: {
         chosenClass: button.dataset.class
@@ -2934,6 +3137,12 @@ classButtons.forEach((button) => {
       },
       settings: {
         showCoordinates: false
+      },
+      party: {
+        activePartyMemberIds: [MAIN_PARTY_MEMBER_ID],
+        memberStates: {
+          [MAIN_PARTY_MEMBER_ID]: createMainPartyMemberState(button.dataset.class, chosenElement)
+        }
       }
     });
 

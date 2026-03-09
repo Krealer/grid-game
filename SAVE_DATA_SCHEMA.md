@@ -4,7 +4,7 @@ This document defines the **canonical save schema** for this project.
 
 - Storage key: `gridGameSaveSlots`
 - Format: JSON array with 3 slot objects
-- Version: `1`
+- Version: `2`
 
 ## Canonical save slot object
 
@@ -14,7 +14,7 @@ This document defines the **canonical save schema** for this project.
     "slotId": 1,
     "createdAt": "2026-01-01T00:00:00.000Z",
     "updatedAt": "2026-01-01T00:00:00.000Z",
-    "version": 1
+    "version": 2
   },
   "playerIdentity": {
     "chosenClass": "warrior",
@@ -48,8 +48,17 @@ This document defines the **canonical save schema** for this project.
     }
   ],
   "party": {
-    "activePartyMemberIds": [],
-    "recruitedCompanionIds": []
+    "activePartyMemberIds": ["main_player"],
+    "recruitedCompanionIds": [],
+    "memberStates": {
+      "main_player": {
+        "id": "main_player",
+        "className": "warrior",
+        "element": "fire",
+        "currentHp": 40,
+        "maxHp": 40
+      }
+    }
   },
   "inventory": {
     "inventoryItems": [],
@@ -81,7 +90,15 @@ This document defines the **canonical save schema** for this project.
 - `settings`: save-bound user options.
   - `showCoordinates`: coordinate visibility toggle.
 - `medals`: medal unlock records with timestamps.
-- `party`: future party system foundations.
+- `party`: party system foundations and persistent HP state.
+  - `activePartyMemberIds`: active battle/world party member ids.
+  - `recruitedCompanionIds`: recruited companion ids.
+  - `memberStates`: keyed party member state records.
+    - `id`: stable party member id.
+    - `className`: class key (`warrior` or `mage` for now).
+    - `element`: element key (`fire`, `water`, `earth`).
+    - `currentHp`: persistent current HP used when entering battle.
+    - `maxHp`: persistent max HP for healing and future party logic.
 - `inventory`: future inventory/gear foundations.
 
 ## Stable ID conventions
@@ -137,6 +154,7 @@ The following structures already exist in the canonical schema and are reserved 
 - party systems:
   - `party.activePartyMemberIds`
   - `party.recruitedCompanionIds`
+  - `party.memberStates`
 - inventory and gear:
   - `inventory.inventoryItems`
   - `inventory.equippedGear`

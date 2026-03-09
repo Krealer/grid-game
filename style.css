@@ -209,10 +209,17 @@ h1 {
   background: var(--wall);
 }
 
+.tile-healing {
+  background:
+    linear-gradient(135deg, #1a7f54 0%, #3ad889 100%);
+  border-color: #89ffd0;
+}
+
 .player-piece,
 .enemy-piece,
 .npc-piece,
-.door-piece {
+.door-piece,
+.healing-tile-piece {
   position: absolute;
   pointer-events: none;
   z-index: 2;
@@ -302,6 +309,33 @@ h1 {
   top: 48%;
   border-radius: 50%;
   background: #f5cf6a;
+}
+
+.healing-tile-piece {
+  border-radius: 16%;
+  border: 2px solid #d9fff0;
+  background: radial-gradient(circle at 50% 50%, #effff8 0 24%, #5ae6a4 25% 100%);
+}
+
+.healing-tile-piece::before,
+.healing-tile-piece::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: #0e6a46;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+}
+
+.healing-tile-piece::before {
+  width: 20%;
+  height: 64%;
+}
+
+.healing-tile-piece::after {
+  width: 64%;
+  height: 20%;
 }
 
 .dialogue-card {
