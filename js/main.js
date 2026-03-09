@@ -3009,6 +3009,14 @@ function findPath(start, end) {
 }
 
 function moveToTile(targetX, targetY) {
+  if (playerState.moving) {
+    return;
+  }
+
+  if (!isInsideGrid(targetX, targetY)) {
+    return;
+  }
+
   if (!isWalkable(targetX, targetY)) {
     return;
   }
@@ -3082,6 +3090,10 @@ function getInteractableAtTile(x, y) {
 }
 
 function tryInteractWithEntity(tileX, tileY) {
+  if (playerState.moving || !isInsideGrid(tileX, tileY)) {
+    return false;
+  }
+
   const target = getInteractableAtTile(tileX, tileY);
 
   if (!target) {
@@ -3210,10 +3222,10 @@ function animationStep(timestamp) {
   }
 
   syncRuntimeState();
-requestAnimationFrame(animationStep);
+  requestAnimationFrame(animationStep);
 }
 
-gridBoard.addEventListener('click', (event) => {
+function handleGridSelection(event) {
   if (screens.game.hidden) {
     return;
   }
@@ -3234,6 +3246,15 @@ gridBoard.addEventListener('click', (event) => {
   }
 
   moveToTile(x, y);
+}
+
+gridBoard.addEventListener('click', handleGridSelection);
+gridBoard.addEventListener('pointerup', (event) => {
+  if (event.pointerType === 'mouse') {
+    return;
+  }
+
+  handleGridSelection(event);
 });
 
 document.addEventListener('keydown', (event) => {
