@@ -240,6 +240,39 @@ h1 {
   background: #0a84ff;
 }
 
+
+.enemy-piece-species-slime {
+  border-radius: 50%;
+}
+
+.enemy-piece-species-tree_monster {
+  border-radius: 22% 22% 34% 34%;
+  border: 2px solid #1b3e1d;
+  background:
+    linear-gradient(180deg, #3f7d35 0 55%, #6a4022 55% 100%);
+}
+
+.enemy-piece-species-tree_monster::before,
+.enemy-piece-species-tree_monster::after {
+  content: '';
+  position: absolute;
+  top: 32%;
+  width: 24%;
+  height: 12%;
+  border-radius: 999px;
+  background: #2f5f31;
+}
+
+.enemy-piece-species-tree_monster::before {
+  left: -14%;
+  transform: rotate(24deg);
+}
+
+.enemy-piece-species-tree_monster::after {
+  right: -14%;
+  transform: rotate(-24deg);
+}
+
 .npc-piece {
   background: #ffffff;
   border: 2px solid #34c759;
@@ -794,6 +827,73 @@ html[dir='rtl'] .dialogue-choice {
 .battle-enemy-water .slime__body,
 .slime--water .slime__body {
   background: linear-gradient(180deg, #74c6ff 0%, #1665cf 100%);
+}
+
+
+.tree-monster {
+  width: 88%;
+  height: 86%;
+  position: relative;
+}
+
+.tree-monster__crown {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 72%;
+  height: 48%;
+  transform: translateX(-50%);
+  border: 3px solid #e6f4dd;
+  border-radius: 40% 40% 30% 30%;
+  background: linear-gradient(180deg, #5aa044 0%, #326a2f 100%);
+}
+
+.tree-monster__trunk {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  width: 36%;
+  height: 56%;
+  transform: translateX(-50%);
+  border: 3px solid #f3e7d8;
+  border-radius: 18% 18% 22% 22%;
+  background: linear-gradient(180deg, #8a5a37 0%, #5b341b 100%);
+}
+
+.tree-monster__arm {
+  position: absolute;
+  top: 44%;
+  width: 28%;
+  height: 10%;
+  border-radius: 999px;
+  border: 2px solid #efdfcc;
+  background: #6f4124;
+}
+
+.tree-monster__arm--left {
+  left: 4%;
+  transform: rotate(24deg);
+}
+
+.tree-monster__arm--right {
+  right: 4%;
+  transform: rotate(-24deg);
+}
+
+.tree-monster__eye {
+  position: absolute;
+  top: 36%;
+  width: 8%;
+  height: 9%;
+  border-radius: 50%;
+  background: #ffe9bb;
+}
+
+.tree-monster__eye--left { left: 43%; }
+.tree-monster__eye--right { right: 43%; }
+
+.tree-monster--earth .tree-monster__crown {
+  background: linear-gradient(180deg, #5aa044 0%, #326a2f 100%);
 }
 
 .battle-options {

@@ -13,9 +13,20 @@ const STABLE_ID_PATTERNS = {
 };
 
 const STARTER_ENEMY_STARTS = [
-  { id: 'enemy_fire_slime_01', x: 3, y: 0, nameKey: 'fireSlime', element: 'fire' },
-  { id: 'enemy_earth_slime_01', x: 6, y: 2, nameKey: 'earthSlime', element: 'earth' },
-  { id: 'enemy_water_slime_01', x: 9, y: 4, nameKey: 'waterSlime', element: 'water' }
+  { id: 'enemy_fire_slime_01', x: 3, y: 0, species: 'slime', nameKey: 'fireSlime', element: 'fire' },
+  { id: 'enemy_earth_slime_01', x: 6, y: 2, species: 'slime', nameKey: 'earthSlime', element: 'earth' },
+  { id: 'enemy_water_slime_01', x: 9, y: 4, species: 'slime', nameKey: 'waterSlime', element: 'water' }
+];
+
+const SECOND_MAP_ENEMY_STARTS = [
+  {
+    id: 'enemy_tree_monster_01',
+    x: 4,
+    y: 1,
+    species: 'tree_monster',
+    nameKey: 'treeMonster',
+    element: 'earth'
+  }
 ];
 
 const STARTER_REQUIRED_SLIME_IDS = [
@@ -188,7 +199,7 @@ const MAP_DEFINITIONS = {
     id: SECOND_MAP_ID,
     layout: SECOND_MAP_LAYOUT,
     spawn: SECOND_MAP_ENTRY,
-    enemies: [],
+    enemies: SECOND_MAP_ENEMY_STARTS,
     npcs: [],
     doors: []
   }
@@ -321,21 +332,40 @@ const BATTLE_MENUS = {
   DEFENDERS: 'defenders'
 };
 
-const SLIME_TEMPLATE = {
-  hp: 20,
-  attack: 3,
-  drops: {
-    type: 'none',
-    itemKey: null
+const ENEMY_SPECIES_DEFINITIONS = {
+  slime: {
+    hp: 20,
+    attack: 3,
+    drops: {
+      type: 'none',
+      itemKey: null
+    },
+    skills: [
+      {
+        nameKey: 'slimeAttack',
+        damageMultiplier: 1,
+        elementType: 'none',
+        category: 'offensive'
+      }
+    ]
   },
-  skills: [
-    {
-      nameKey: 'slimeAttack',
-      damageMultiplier: 1,
-      elementType: 'none',
-      category: 'offensive'
-    }
-  ]
+  tree_monster: {
+    fixedElement: 'earth',
+    hp: 25,
+    attack: 4,
+    drops: {
+      type: 'none',
+      itemKey: null
+    },
+    skills: [
+      {
+        nameKey: 'branchStrike',
+        damageMultiplier: 1,
+        elementType: 'earth',
+        category: 'offensive'
+      }
+    ]
+  }
 };
 enemyStates = createInitialEnemyStates();
 npcState = createNpcState(enemyStates);
@@ -391,7 +421,7 @@ const translations = {
     mage: 'Mage',
     classSaved: 'Selection saved for Slot {number}.',
     gameplayTitle: 'Grid Movement',
-    gameplayHelper: 'Tap or click a reachable gray tile to move. Tap a nearby slime to battle, or tap a nearby NPC to talk.',
+    gameplayHelper: 'Tap or click a reachable gray tile to move. Tap a nearby enemy to battle, or tap a nearby NPC to talk.',
     gameplaySlot: 'Slot {number}: {element} • {className}',
     battleTitle: 'Battle',
     battleStatusPlayer: 'Player',
@@ -424,7 +454,9 @@ const translations = {
     fireSlime: 'Fire Slime',
     earthSlime: 'Earth Slime',
     waterSlime: 'Water Slime',
+    treeMonster: 'Tree Monster',
     slimeAttack: 'Slime Attack',
+    branchStrike: 'Branch Strike',
     swordSlash: 'Sword Slash',
     stickBonk: 'Stick Bonk',
     fireSlash: 'Fire Slash',
@@ -489,7 +521,7 @@ const translations = {
     mage: '魔法使い',
     classSaved: 'スロット {number} に選択を保存しました。',
     gameplayTitle: 'グリッド移動',
-    gameplayHelper: '到達できる灰色タイルをタップまたはクリックして移動します。近くのスライムは戦闘、近くのNPCとは会話できます。',
+    gameplayHelper: '到達できる灰色タイルをタップまたはクリックして移動します。近くの敵は戦闘、近くのNPCとは会話できます。',
     gameplaySlot: 'スロット {number}: {element} • {className}',
     battleTitle: 'バトル',
     battleStatusPlayer: 'プレイヤー',
@@ -522,7 +554,9 @@ const translations = {
     fireSlime: 'ファイアスライム',
     earthSlime: 'アーススライム',
     waterSlime: 'ウォータースライム',
+    treeMonster: 'ツリーモンスター',
     slimeAttack: 'スライムアタック',
+    branchStrike: 'ブランチストライク',
     swordSlash: 'ソードスラッシュ',
     stickBonk: 'スティックボンク',
     fireSlash: 'ファイアスラッシュ',
@@ -587,7 +621,7 @@ const translations = {
     mage: 'Маг',
     classSaved: 'Выбор сохранён для слота {number}.',
     gameplayTitle: 'Движение по сетке',
-    gameplayHelper: 'Нажмите на достижимую серую клетку, чтобы переместиться. Нажмите на соседнего слизня для боя или на соседнего NPC для диалога.',
+    gameplayHelper: 'Нажмите на достижимую серую клетку, чтобы переместиться. Нажмите на соседнего врага для боя или на соседнего NPC для диалога.',
     gameplaySlot: 'Слот {number}: {element} • {className}',
     battleTitle: 'Бой',
     battleStatusPlayer: 'Игрок',
@@ -620,7 +654,9 @@ const translations = {
     fireSlime: 'Огненный слизень',
     earthSlime: 'Земляной слизень',
     waterSlime: 'Водяной слизень',
+    treeMonster: 'Древесный монстр',
     slimeAttack: 'Атака слизня',
+    branchStrike: 'Удар ветвью',
     swordSlash: 'Удар мечом',
     stickBonk: 'Удар палкой',
     fireSlash: 'Огненный разрез',
@@ -685,7 +721,7 @@ const translations = {
     mage: 'ساحر',
     classSaved: 'تم حفظ الاختيار في الخانة {number}.',
     gameplayTitle: 'الحركة على الشبكة',
-    gameplayHelper: 'انقر أو المس مربّعًا رماديًا يمكن الوصول إليه للتحرك. المس سلايمًا مجاورًا للمعركة أو شخصية NPC مجاورة لبدء الحوار.',
+    gameplayHelper: 'انقر أو المس مربّعًا رماديًا يمكن الوصول إليه للتحرك. المس عدوًا مجاورًا للمعركة أو شخصية NPC مجاورة لبدء الحوار.',
     gameplaySlot: 'الخانة {number}: {element} • {className}',
     battleTitle: 'معركة',
     battleStatusPlayer: 'اللاعب',
@@ -718,7 +754,9 @@ const translations = {
     fireSlime: 'سلايم النار',
     earthSlime: 'سلايم الأرض',
     waterSlime: 'سلايم الماء',
+    treeMonster: 'وحش الشجرة',
     slimeAttack: 'هجوم السلايم',
+    branchStrike: 'ضربة الغصن',
     swordSlash: 'ضربة السيف',
     stickBonk: 'ضربة العصا',
     fireSlash: 'ضربة النار',
@@ -786,18 +824,21 @@ function isGround(x, y, mapId = currentMapId) {
   return isInsideGrid(x, y) && map.layout[y][x] === 0;
 }
 
-function isValidEnemySpawn(x, y, occupiedKeys) {
-  if (!isGround(x, y) || (x === 0 && y === 0)) {
+function isValidEnemySpawn(x, y, occupiedKeys, mapId = currentMapId) {
+  const map = getMapDefinition(mapId);
+  const mapSpawn = map.spawn || { x: 0, y: 0 };
+
+  if (!isGround(x, y, mapId) || (x === mapSpawn.x && y === mapSpawn.y)) {
     return false;
   }
 
   return !occupiedKeys.has(`${x},${y}`);
 }
 
-function getFirstValidEnemySpawn(occupiedKeys) {
+function getFirstValidEnemySpawn(occupiedKeys, mapId = currentMapId) {
   for (let y = 0; y < GRID_SIZE; y += 1) {
     for (let x = 0; x < GRID_SIZE; x += 1) {
-      if (isValidEnemySpawn(x, y, occupiedKeys)) {
+      if (isValidEnemySpawn(x, y, occupiedKeys, mapId)) {
         return { x, y };
       }
     }
@@ -806,9 +847,11 @@ function getFirstValidEnemySpawn(occupiedKeys) {
   return { x: 1, y: 0 };
 }
 
-function createEnemyState(enemyTemplate, occupiedKeys) {
+function createEnemyState(enemyTemplate, occupiedKeys, mapId = currentMapId) {
   const { x, y } = enemyTemplate;
-  const spawn = isValidEnemySpawn(x, y, occupiedKeys) ? { x, y } : getFirstValidEnemySpawn(occupiedKeys);
+  const species = enemyTemplate.species || 'slime';
+  const speciesDefinition = ENEMY_SPECIES_DEFINITIONS[species] || ENEMY_SPECIES_DEFINITIONS.slime;
+  const spawn = isValidEnemySpawn(x, y, occupiedKeys, mapId) ? { x, y } : getFirstValidEnemySpawn(occupiedKeys, mapId);
 
   occupiedKeys.add(`${spawn.x},${spawn.y}`);
 
@@ -816,13 +859,14 @@ function createEnemyState(enemyTemplate, occupiedKeys) {
     id: enemyTemplate.id,
     x: spawn.x,
     y: spawn.y,
+    species,
     nameKey: enemyTemplate.nameKey,
-    element: enemyTemplate.element,
-    maxHp: SLIME_TEMPLATE.hp,
-    hp: SLIME_TEMPLATE.hp,
-    attack: SLIME_TEMPLATE.attack,
-    drops: { ...SLIME_TEMPLATE.drops },
-    skills: SLIME_TEMPLATE.skills.map((skill) => ({ ...skill }))
+    element: speciesDefinition.fixedElement || enemyTemplate.element,
+    maxHp: speciesDefinition.hp,
+    hp: speciesDefinition.hp,
+    attack: speciesDefinition.attack,
+    drops: { ...speciesDefinition.drops },
+    skills: speciesDefinition.skills.map((skill) => ({ ...skill }))
   };
 }
 
@@ -830,7 +874,7 @@ function createInitialEnemyStates(mapId = currentMapId) {
   const occupiedKeys = new Set();
   const enemyTemplates = getMapDefinition(mapId).enemies || [];
 
-  return enemyTemplates.map((enemyTemplate) => createEnemyState(enemyTemplate, occupiedKeys));
+  return enemyTemplates.map((enemyTemplate) => createEnemyState(enemyTemplate, occupiedKeys, mapId));
 }
 
 function isValidNpcSpawn(x, y, enemyList) {
@@ -1156,10 +1200,6 @@ function normalizeLegacySlot(slot, slotId) {
 }
 
 function createEnemyStatesFromDefeatedIds(defeatedEnemyIds, mapId = currentMapId) {
-  if (mapId !== DEFAULT_MAP_ID) {
-    return createInitialEnemyStates(mapId);
-  }
-
   const defeated = new Set(normalizeDefeatedEnemyIds(defeatedEnemyIds));
   return createInitialEnemyStates(mapId).filter((enemy) => !defeated.has(enemy.id));
 }
@@ -1538,6 +1578,7 @@ function advanceDialogue() {
 function createEnemyForBattle(enemy) {
   return {
     id: enemy.id,
+    species: enemy.species || 'slime',
     nameKey: enemy.nameKey,
     element: enemy.element,
     maxHp: enemy.maxHp,
@@ -1784,6 +1825,7 @@ function renderBattleUI() {
     const battleEnemyPiece = document.querySelector('.battle-enemy');
     if (battleEnemyPiece) {
       battleEnemyPiece.classList.remove('battle-enemy-fire', 'battle-enemy-earth', 'battle-enemy-water');
+      battleEnemyPiece.innerHTML = '';
     }
 
     const battlePlayerPiece = document.querySelector('.battle-player');
@@ -1809,6 +1851,7 @@ function renderBattleUI() {
   if (battleEnemyPiece) {
     battleEnemyPiece.classList.remove('battle-enemy-fire', 'battle-enemy-earth', 'battle-enemy-water');
     battleEnemyPiece.classList.add(`battle-enemy-${enemy.element}`);
+    battleEnemyPiece.innerHTML = getBattleEnemyMarkup(enemy.species, enemy.element);
   }
 
   const battlePlayerPiece = document.querySelector('.battle-player');
@@ -1823,11 +1866,6 @@ function renderBattleUI() {
     battleCharacter.classList.add(`character--${player.class}`);
   }
 
-  const slimePiece = document.querySelector('.battle-enemy .slime');
-  if (slimePiece) {
-    slimePiece.classList.remove('slime--fire', 'slime--earth', 'slime--water');
-    slimePiece.classList.add(`slime--${enemy.element}`);
-  }
   textNodes.battleEnemyStats.textContent = `${locale.attack}: ${enemy.attack}`;
   textNodes.battleEnemyHp.textContent = `${locale.hp}: ${enemy.hp} / ${enemy.maxHp}`;
   textNodes.battlePlayerName.textContent = locale.battleStatusPlayer;
@@ -2245,12 +2283,9 @@ function writeCurrentGameToSlot() {
 }
 
 function getDefeatedEnemyIdsFromCurrentState() {
-  if (currentMapId !== DEFAULT_MAP_ID) {
-    const slot = currentSlotId ? getSlotById(currentSlotId) : null;
-    return normalizeDefeatedEnemyIds(slot?.worldProgress?.defeatedEnemyIds);
-  }
+  const mapEnemyTemplates = getCurrentMapDefinition().enemies || [];
 
-  return STARTER_ENEMY_STARTS
+  return mapEnemyTemplates
     .filter((enemyStart) => !enemyStates.some((enemy) => enemy.id === enemyStart.id))
     .map((enemy) => enemy.id);
 }
@@ -2334,7 +2369,7 @@ function createNpcPiece(npc) {
 
 function createEnemyPiece(enemy) {
   const enemyPiece = document.createElement('div');
-  enemyPiece.className = `enemy-piece enemy-piece-${enemy.element}`;
+  enemyPiece.className = `enemy-piece enemy-piece-${enemy.element} enemy-piece-species-${enemy.species || 'slime'}`;
 
   const tilePercent = 100 / GRID_SIZE;
   const tokenSizePercent = tilePercent * 0.68;
@@ -2347,6 +2382,32 @@ function createEnemyPiece(enemy) {
   enemyPiece.style.top = `${topPercent}%`;
 
   return enemyPiece;
+}
+
+
+function getBattleEnemyMarkup(species, element) {
+  if (species === 'tree_monster') {
+    return `
+      <div class="tree-monster tree-monster--${element}" aria-hidden="true">
+        <div class="tree-monster__crown"></div>
+        <div class="tree-monster__trunk"></div>
+        <div class="tree-monster__arm tree-monster__arm--left"></div>
+        <div class="tree-monster__arm tree-monster__arm--right"></div>
+        <div class="tree-monster__eye tree-monster__eye--left"></div>
+        <div class="tree-monster__eye tree-monster__eye--right"></div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="slime slime--${element}" aria-hidden="true">
+      <div class="slime__body">
+        <div class="slime__shine"></div>
+        <div class="slime__eye slime__eye--left"></div>
+        <div class="slime__eye slime__eye--right"></div>
+      </div>
+    </div>
+  `;
 }
 
 function isValidDoorSpawn(x, y, enemyList, npc, playerPos) {
