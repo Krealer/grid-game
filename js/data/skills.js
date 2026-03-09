@@ -8,5 +8,6 @@ export const SKILL_DEFINITIONS = {
   water_ball: { id: 'water_ball', nameKey: 'waterBall', damageMultiplier: 2, elementType: 'water', category: 'offensive' },
   earth_ball: { id: 'earth_ball', nameKey: 'earthBall', damageMultiplier: 2, elementType: 'earth', category: 'offensive' },
   slime_attack: { id: 'slime_attack', nameKey: 'slimeAttack', damageMultiplier: 1, elementType: 'none', category: 'offensive' },
-  branch_strike: { id: 'branch_strike', nameKey: 'branchStrike', damageMultiplier: 1, elementType: 'earth', category: 'offensive' }
+  branch_strike: { id: 'branch_strike', nameKey: 'branchStrike', damageMultiplier: 1, elementType: 'earth', category: 'offensive' },
+  shell_burn: { id: 'shell_burn', nameKey: 'shellBurn', damageMultiplier: 1, elementType: 'fire', category: 'offensive' }
 };

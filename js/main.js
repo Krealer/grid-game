@@ -2516,6 +2516,20 @@ function getBattleEnemyMarkup(species, element) {
     `;
   }
 
+  if (species === 'lava_turtle') {
+    return `
+      <div class="lava-turtle lava-turtle--${element}" aria-hidden="true">
+        <div class="lava-turtle__shell"></div>
+        <div class="lava-turtle__head"></div>
+        <div class="lava-turtle__leg lava-turtle__leg--front-left"></div>
+        <div class="lava-turtle__leg lava-turtle__leg--front-right"></div>
+        <div class="lava-turtle__leg lava-turtle__leg--rear-left"></div>
+        <div class="lava-turtle__leg lava-turtle__leg--rear-right"></div>
+        <div class="lava-turtle__flame"></div>
+      </div>
+    `;
+  }
+
   return `
     <div class="slime slime--${element}" aria-hidden="true">
       <div class="slime__body">
