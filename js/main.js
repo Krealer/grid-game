@@ -1,5 +1,5 @@
 import { GRID_SIZE, TILE_SPEED_PER_SECOND, SAVE_SCHEMA_VERSION, DEFAULT_MAP_ID, STABLE_ID_PATTERNS, STARTER_REQUIRED_SLIME_IDS, STARTER_DOOR_EVENT_FLAG, STARTER_DOOR, SECOND_MAP_ID, SECOND_MAP_ENTRY, MAIN_PARTY_MEMBER_ID, MAX_ACTIVE_PARTY_SIZE, STORAGE_LANGUAGE_KEY, STORAGE_SAVE_KEY, SLOT_COUNT, BATTLE_MENUS, ELEMENTAL_ADVANTAGE } from './utils/constants.js';
-import { MAP_DEFINITIONS, SECOND_MAP_HEALING_TILES } from './data/maps.js';
+import { MAP_DEFINITIONS, SECOND_MAP_HEALING_TILES, TERRAIN_TILE_DEFINITIONS, TERRAIN_TILE_TYPES } from './data/maps.js';
 import { STARTER_ENEMY_STARTS, SECOND_MAP_ENEMY_STARTS, ENEMY_SPECIES_DEFINITIONS } from './data/enemies.js';
 import { COMPANION_DEFINITIONS, PLAYER_CLASS_STATS, LEVEL_GROWTH_BY_CLASS } from './data/characters.js';
 import { GEAR_ITEM_DEFINITIONS, DEFAULT_EQUIPPED_GEAR, EQUIPMENT_SLOT_ORDER, EQUIPMENT_SLOT_TYPES } from './data/gear.js';
@@ -151,9 +151,45 @@ function getCurrentMapDefinition() {
   return getMapDefinition(currentMapId);
 }
 
-function isGround(x, y, mapId = currentMapId) {
+function getTileDefinitionAt(x, y, mapId = currentMapId) {
   const map = getMapDefinition(mapId);
-  return isInsideGrid(x, y) && map.layout[y][x] === 0;
+  if (!isInsideGrid(x, y)) {
+    return null;
+  }
+
+  const tileCode = map.layout[y][x];
+  return TERRAIN_TILE_DEFINITIONS[tileCode] || TERRAIN_TILE_DEFINITIONS[1];
+}
+
+function getPlayerTraversalTagsForSlot(slot) {
+  if (!slot) {
+    return new Set();
+  }
+
+  const mainMember = getMainPartyMemberState(slot);
+  return new Set(getEffectiveMemberStats(mainMember, slot).traversalTagsGranted);
+}
+
+function isTileTraversableByTags(x, y, traversalTags = new Set(), mapId = currentMapId) {
+  const tile = getTileDefinitionAt(x, y, mapId);
+  if (!tile) {
+    return false;
+  }
+
+  if (tile.walkable) {
+    return true;
+  }
+
+  if (!tile.traversalTagRequired) {
+    return false;
+  }
+
+  return traversalTags.has(tile.traversalTagRequired);
+}
+
+function isGround(x, y, mapId = currentMapId) {
+  const tile = getTileDefinitionAt(x, y, mapId);
+  return tile?.tileType === TERRAIN_TILE_TYPES.GROUND;
 }
 
 function isValidEnemySpawn(x, y, occupiedKeys, mapId = currentMapId) {
@@ -332,8 +368,9 @@ function isEnemyTile(x, y) {
   return Boolean(getEnemyAtTile(x, y));
 }
 
-function isWalkable(x, y) {
-  return isGround(x, y) && !isEnemyTile(x, y) && !isNpcTile(x, y);
+function isWalkable(x, y, traversalTags = null) {
+  const tags = traversalTags || getPlayerTraversalTagsForSlot(currentSlotId ? getSlotById(currentSlotId) : null);
+  return isTileTraversableByTags(x, y, tags) && !isEnemyTile(x, y) && !isNpcTile(x, y);
 }
 
 function getExpRequirementForLevel(level) {
@@ -528,7 +565,12 @@ function normalizePosition(playerData, mapId = DEFAULT_MAP_ID) {
   const x = Number.isInteger(playerData?.x) ? playerData.x : fallbackX;
   const y = Number.isInteger(playerData?.y) ? playerData.y : fallbackY;
 
-  if (!isGround(x, y, mapId)) {
+  if (!isInsideGrid(x, y)) {
+    return { x: fallbackX, y: fallbackY };
+  }
+
+  const tile = getTileDefinitionAt(x, y, mapId);
+  if (!tile || tile.tileType === TERRAIN_TILE_TYPES.WALL) {
     return { x: fallbackX, y: fallbackY };
   }
 
@@ -800,7 +842,7 @@ function normalizeCanonicalSlot(slot, slotId) {
     y: slot?.playerWorldPosition?.playerY
   }, normalizedMapId);
 
-  return {
+  const normalizedSlot = {
     metadata: {
       slotId,
       createdAt: typeof slot?.metadata?.createdAt === 'string' ? slot.metadata.createdAt : canonical.metadata.createdAt,
@@ -845,6 +887,23 @@ function normalizeCanonicalSlot(slot, slotId) {
       equippedGear: normalizeEquippedGear(normalizeStringValueRecord(slot?.inventory?.equippedGear))
     }
   };
+
+  const traversalTags = getPlayerTraversalTagsForSlot(normalizedSlot);
+  const candidatePosition = normalizedSlot.playerWorldPosition;
+  const canStandOnTile = isTileTraversableByTags(
+    candidatePosition.playerX,
+    candidatePosition.playerY,
+    traversalTags,
+    candidatePosition.currentMapId
+  );
+
+  if (!canStandOnTile) {
+    const fallback = getMapDefinition(candidatePosition.currentMapId).spawn;
+    normalizedSlot.playerWorldPosition.playerX = fallback.x;
+    normalizedSlot.playerWorldPosition.playerY = fallback.y;
+  }
+
+  return normalizedSlot;
 }
 
 function normalizeLegacySlot(slot, slotId) {
@@ -2562,7 +2621,11 @@ function buildGrid() {
       const tile = document.createElement('button');
       tile.type = 'button';
       const isHealingTile = healingTileLookup.has(`${x},${y}`);
-      tile.className = `grid-tile ${isGround(x, y) ? 'tile-ground' : 'tile-wall'}${isHealingTile ? ' tile-healing' : ''}`;
+      const tileType = getTileDefinitionAt(x, y)?.tileType || TERRAIN_TILE_TYPES.WALL;
+      const terrainClass = tileType === TERRAIN_TILE_TYPES.GROUND
+        ? 'tile-ground'
+        : (tileType === TERRAIN_TILE_TYPES.SWAMP ? 'tile-swamp' : 'tile-wall');
+      tile.className = `grid-tile ${terrainClass}${isHealingTile ? ' tile-healing' : ''}`;
       tile.dataset.x = String(x);
       tile.dataset.y = String(y);
       tile.setAttribute('role', 'gridcell');

@@ -247,6 +247,12 @@ h1 {
   background: var(--wall);
 }
 
+.tile-swamp {
+  background:
+    repeating-linear-gradient(135deg, #334d1f 0 6px, #253a16 6px 12px);
+  border-color: #9ac26e;
+}
+
 .tile-healing {
   background:
     linear-gradient(135deg, #1a7f54 0%, #3ad889 100%);

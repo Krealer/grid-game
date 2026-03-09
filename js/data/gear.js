@@ -67,6 +67,16 @@ export const GEAR_ITEM_DEFINITIONS = {
     movementSpeedBonus: 0.5,
     traversalTagsGranted: []
   },
+  item_travelers_boots: {
+    itemId: 'item_travelers_boots',
+    nameKey: 'gearTravelersBoots',
+    slotType: EQUIPMENT_SLOT_TYPES.MOBILITY,
+    allowedClasses: ['warrior', 'mage'],
+    hpBonus: 0,
+    attackBonus: 0,
+    movementSpeedBonus: 0.25,
+    traversalTagsGranted: ['swamp_walk']
+  },
   item_worn_cape: {
     itemId: 'item_worn_cape',
     nameKey: 'gearWornCape',
