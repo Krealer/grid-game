@@ -21,7 +21,8 @@ const RECRUIT_ROWAN_DIALOGUE_NODES = {
   intro: { id: 'intro', speaker: 'npc', textKey: 'npcRecruitRowanIntro', nextNodeId: 'ask_join' },
   ask_join: { id: 'ask_join', speaker: 'npc', textKey: 'npcRecruitRowanPrompt', choices: [{ id: 'yes', textKey: 'yes', nextNodeId: 'joined', effects: { recruitCompanionId: 'companion_rowan_01', recruitNpcId: 'npc_recruit_01', recruitNpcFlag: 'npc_recruit_01_recruited' } }, { id: 'no', textKey: 'no', nextNodeId: 'declined' }] },
   joined: { id: 'joined', speaker: 'npc', textKey: 'npcRecruitRowanJoined', nextNodeId: null },
-  declined: { id: 'declined', speaker: 'npc', textKey: 'npcRecruitRowanDeclined', nextNodeId: null }
+  declined: { id: 'declined', speaker: 'npc', textKey: 'npcRecruitRowanDeclined', nextNodeId: null },
+  recruited_inactive: { id: 'recruited_inactive', speaker: 'npc', textKey: 'npcRecruitRowanReturned', nextNodeId: null }
 };
 
 const getStarterGuideDialogueStartNodeIdForSlot = (slot) => {
@@ -33,7 +34,23 @@ const getStarterGuideDialogueStartNodeIdForSlot = (slot) => {
   return STARTER_GUIDE_DIALOGUE_FLOW.repeatNodeByStoryChoice[storyModeChoice] || STARTER_GUIDE_DIALOGUE_FLOW.repeatNodeByStoryChoice.story;
 };
 
+const getRecruitRowanStartNodeIdForSlot = (slot) => {
+  const companionId = 'companion_rowan_01';
+  const recruitedIds = new Set(slot?.party?.recruitedCompanionIds || []);
+
+  if (!recruitedIds.has(companionId)) {
+    return 'intro';
+  }
+
+  const activeIds = new Set(slot?.party?.activePartyMemberIds || []);
+  if (activeIds.has(companionId)) {
+    return 'joined';
+  }
+
+  return 'recruited_inactive';
+};
+
 export const DIALOGUE_DEFINITIONS_BY_NPC_ID = {
   npc_starter_guide: { nodes: STARTER_GUIDE_DIALOGUE_NODES, getStartNodeId: getStarterGuideDialogueStartNodeIdForSlot },
-  npc_recruit_01: { nodes: RECRUIT_ROWAN_DIALOGUE_NODES, getStartNodeId: () => 'intro' }
+  npc_recruit_01: { nodes: RECRUIT_ROWAN_DIALOGUE_NODES, getStartNodeId: getRecruitRowanStartNodeIdForSlot }
 };

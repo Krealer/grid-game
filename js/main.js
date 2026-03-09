@@ -216,23 +216,52 @@ function isValidNpcSpawn(x, y, enemyList, occupiedNpcKeys = new Set(), mapId = c
   return !enemyList.some((enemy) => enemy.x === x && enemy.y === y);
 }
 
-function isRecruitableNpcRecruited(npcTemplate, slot) {
+function getCompanionWorldState(companionId, slot) {
+  if (!companionId || !slot) {
+    return null;
+  }
+
+  return slot.party?.companionWorldStateFlags?.[companionId] || null;
+}
+
+function shouldSpawnRecruitableNpc(npcTemplate, slot, mapId) {
   if (!npcTemplate || npcTemplate.type !== 'recruitable_npc') {
+    return true;
+  }
+
+  const companionId = npcTemplate.companionId;
+  const recruitedIds = new Set(slot?.party?.recruitedCompanionIds || []);
+  const activeIds = new Set(slot?.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID]);
+  const companionState = getCompanionWorldState(companionId, slot);
+
+  if (!recruitedIds.has(companionId)) {
+    return true;
+  }
+
+  if (activeIds.has(companionId)) {
     return false;
   }
 
-  const recruitedIds = new Set(slot?.party?.recruitedCompanionIds || []);
-  const flags = slot?.npcStateFlags || {};
-  return recruitedIds.has(npcTemplate.companionId) || Boolean(flags[npcTemplate.recruitmentStateFlag]);
+  const onOriginMap = mapId === npcTemplate.originMapId;
+  if (!onOriginMap) {
+    return false;
+  }
+
+  return companionState === 'at_origin_pending_spawn' || companionState === 'at_origin';
 }
 
 function createNpcStates(enemyList, mapId = currentMapId) {
   const npcTemplates = getMapDefinition(mapId).npcs || [];
   const slot = currentSlotId ? getSlotById(currentSlotId) : null;
   const occupiedNpcKeys = new Set();
+  const shouldUpdateCompanionWorldState = Boolean(slot && currentSlotId);
+  const updatedCompanionStates = {
+    ...(slot?.party?.companionWorldStateFlags || {})
+  };
+  let companionStateChanged = false;
 
-  return npcTemplates.reduce((result, npcTemplate) => {
-    if (isRecruitableNpcRecruited(npcTemplate, slot)) {
+  const spawnedNpcs = npcTemplates.reduce((result, npcTemplate) => {
+    if (!shouldSpawnRecruitableNpc(npcTemplate, slot, mapId)) {
       return result;
     }
 
@@ -240,6 +269,10 @@ function createNpcStates(enemyList, mapId = currentMapId) {
     if (isValidNpcSpawn(desired.x, desired.y, enemyList, occupiedNpcKeys, mapId)) {
       occupiedNpcKeys.add(`${desired.x},${desired.y}`);
       result.push({ ...npcTemplate, x: desired.x, y: desired.y });
+      if (npcTemplate.type === 'recruitable_npc' && getCompanionWorldState(npcTemplate.companionId, slot) === 'at_origin_pending_spawn') {
+        updatedCompanionStates[npcTemplate.companionId] = 'at_origin';
+        companionStateChanged = true;
+      }
       return result;
     }
 
@@ -248,6 +281,10 @@ function createNpcStates(enemyList, mapId = currentMapId) {
         if (isValidNpcSpawn(x, y, enemyList, occupiedNpcKeys, mapId)) {
           occupiedNpcKeys.add(`${x},${y}`);
           result.push({ ...npcTemplate, x, y });
+          if (npcTemplate.type === 'recruitable_npc' && getCompanionWorldState(npcTemplate.companionId, slot) === 'at_origin_pending_spawn') {
+            updatedCompanionStates[npcTemplate.companionId] = 'at_origin';
+            companionStateChanged = true;
+          }
           return result;
         }
       }
@@ -255,6 +292,16 @@ function createNpcStates(enemyList, mapId = currentMapId) {
 
     return result;
   }, []);
+
+  if (shouldUpdateCompanionWorldState && companionStateChanged) {
+    updateSlot(currentSlotId, {
+      party: {
+        companionWorldStateFlags: updatedCompanionStates
+      }
+    });
+  }
+
+  return spawnedNpcs;
 }
 
 function getNpcAtTile(x, y) {
