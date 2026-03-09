@@ -3630,29 +3630,26 @@ function getEventClientPoint(event) {
 }
 
 function addUnifiedPressListener(element, onPress) {
-  let suppressNextClick = false;
-  let suppressClicksUntil = 0;
-  const TOUCH_CLICK_SUPPRESSION_MS = 700;
+  let suppressSyntheticClickUntil = 0;
+  const SYNTHETIC_CLICK_SUPPRESSION_MS = 350;
   const supportsPointerEvents = typeof window !== 'undefined' && 'PointerEvent' in window;
+  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
   element.addEventListener('click', (event) => {
-    if (Date.now() < suppressClicksUntil) {
+    if (suppressSyntheticClickUntil > 0 && now() < suppressSyntheticClickUntil) {
+      suppressSyntheticClickUntil = 0;
       return;
     }
 
-    if (suppressNextClick) {
-      suppressNextClick = false;
-      return;
-    }
+    suppressSyntheticClickUntil = 0;
 
     onPress(event);
   });
 
   const handleTouchLikePress = (event) => {
-    const handled = onPress(event) === true;
-    suppressNextClick = handled;
+    const handled = onPress(event) !== false;
     if (handled) {
-      suppressClicksUntil = Date.now() + TOUCH_CLICK_SUPPRESSION_MS;
+      suppressSyntheticClickUntil = now() + SYNTHETIC_CLICK_SUPPRESSION_MS;
     }
 
     if (handled && event.cancelable) {
