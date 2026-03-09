@@ -90,7 +90,7 @@ This document defines the **canonical save schema** for this project.
 - `npcStateFlags`: boolean map of NPC/dialogue flags.
 - `settings`: save-bound user options.
   - `showCoordinates`: coordinate visibility toggle.
-- `medals`: medal unlock records with timestamps.
+- `medals`: medal unlock records with timestamps (`unlockedAt` must be an ISO datetime string, for example `2026-03-09T14:30:00.000Z`).
 - `party`: party system foundations and persistent HP state.
   - `activePartyMemberIds`: active battle/world party member ids.
   - `recruitedCompanionIds`: recruited companion ids.
