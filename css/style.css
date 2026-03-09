@@ -253,6 +253,35 @@ h1 {
   border-color: #9ac26e;
 }
 
+.tile-ember {
+  background:
+    repeating-linear-gradient(135deg, #8f2d11 0 6px, #531708 6px 12px);
+  border-color: #f07d3f;
+}
+
+.grid-board[data-zone-type='fire_biome'] {
+  background: #2b120e;
+  border-color: #8a3b2a;
+}
+
+.grid-board[data-zone-type='fire_biome'] .tile-ground {
+  background:
+    radial-gradient(circle at 28% 30%, #5f2417 0%, #3d180f 55%, #2a110b 100%);
+  border-color: #7a3825;
+}
+
+.grid-board[data-zone-type='fire_biome'] .tile-wall {
+  background:
+    linear-gradient(180deg, #120f14 0%, #1f1716 100%);
+  border-color: #4a2a23;
+}
+
+.grid-board[data-zone-type='fire_biome'] .tile-ember {
+  background:
+    repeating-linear-gradient(45deg, #ff8f2c 0 4px, #da420d 4px 8px, #7f1709 8px 12px);
+  border-color: #ffd08c;
+}
+
 .tile-healing {
   background:
     linear-gradient(135deg, #1a7f54 0%, #3ad889 100%);

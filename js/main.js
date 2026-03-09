@@ -1,4 +1,4 @@
-import { GRID_SIZE, TILE_SPEED_PER_SECOND, SAVE_SCHEMA_VERSION, DEFAULT_MAP_ID, STABLE_ID_PATTERNS, STARTER_REQUIRED_SLIME_IDS, STARTER_DOOR_EVENT_FLAG, STARTER_DOOR, SECOND_MAP_ID, SECOND_MAP_ENTRY, MAIN_PARTY_MEMBER_ID, MAX_ACTIVE_PARTY_SIZE, STORAGE_LANGUAGE_KEY, STORAGE_SAVE_KEY, SLOT_COUNT, BATTLE_MENUS, ELEMENTAL_ADVANTAGE } from './utils/constants.js';
+import { GRID_SIZE, TILE_SPEED_PER_SECOND, SAVE_SCHEMA_VERSION, DEFAULT_MAP_ID, STABLE_ID_PATTERNS, STARTER_REQUIRED_SLIME_IDS, STARTER_DOOR_EVENT_FLAG, STARTER_DOOR, MAIN_PARTY_MEMBER_ID, MAX_ACTIVE_PARTY_SIZE, STORAGE_LANGUAGE_KEY, STORAGE_SAVE_KEY, SLOT_COUNT, BATTLE_MENUS, ELEMENTAL_ADVANTAGE } from './utils/constants.js';
 import { MAP_DEFINITIONS, SECOND_MAP_HEALING_TILES, TERRAIN_TILE_DEFINITIONS, TERRAIN_TILE_TYPES } from './data/maps.js';
 import { STARTER_ENEMY_STARTS, SECOND_MAP_ENEMY_STARTS, ENEMY_SPECIES_DEFINITIONS } from './data/enemies.js';
 import { COMPANION_DEFINITIONS, PLAYER_CLASS_STATS, LEVEL_GROWTH_BY_CLASS } from './data/characters.js';
@@ -2274,17 +2274,25 @@ function transitionToMap(mapId, spawnOverride = null) {
   return true;
 }
 
-function tryUseStarterDoor() {
-  if (!currentSlotId || currentMapId !== DEFAULT_MAP_ID) {
+function tryUseDoor(door) {
+  if (!door?.targetMapId) {
     return false;
   }
 
-  const slot = synchronizeStarterDoorProgress(currentSlotId) || getSlotById(currentSlotId);
-  if (!slot || !getStarterDoorState(slot).spawned || !canUseStarterDoor(slot)) {
+  if (!currentSlotId) {
     return false;
   }
 
-  return transitionToMap(SECOND_MAP_ID);
+  if (door.id === STARTER_DOOR.id && currentMapId === DEFAULT_MAP_ID) {
+    const slot = synchronizeStarterDoorProgress(currentSlotId) || getSlotById(currentSlotId);
+    if (!slot || !getStarterDoorState(slot).spawned || !canUseStarterDoor(slot)) {
+      return false;
+    }
+
+    return transitionToMap(door.targetMapId, door.targetSpawn);
+  }
+
+  return transitionToMap(door.targetMapId, door.targetSpawn);
 }
 
 function beginNextStep() {
@@ -2557,9 +2565,9 @@ function isValidDoorSpawn(x, y, enemyList, npcList, playerPos) {
   return !enemyList.some((enemy) => enemy.x === x && enemy.y === y);
 }
 
-function getStarterDoorForMap() {
-  if (!currentSlotId || currentMapId !== DEFAULT_MAP_ID) {
-    return null;
+function resolveDoorPlacement(door) {
+  if (door.id !== STARTER_DOOR.id || currentMapId !== DEFAULT_MAP_ID || !currentSlotId) {
+    return { ...door };
   }
 
   const slot = getSlotById(currentSlotId);
@@ -2568,20 +2576,26 @@ function getStarterDoorForMap() {
   }
 
   const playerPos = getCurrentTilePosition();
-
-  if (isValidDoorSpawn(STARTER_DOOR.x, STARTER_DOOR.y, enemyStates, npcStates, playerPos)) {
-    return { ...STARTER_DOOR };
+  if (isValidDoorSpawn(door.x, door.y, enemyStates, npcStates, playerPos)) {
+    return { ...door };
   }
 
   for (let y = 0; y < GRID_SIZE; y += 1) {
     for (let x = 0; x < GRID_SIZE; x += 1) {
       if (isValidDoorSpawn(x, y, enemyStates, npcStates, playerPos)) {
-        return { ...STARTER_DOOR, x, y };
+        return { ...door, x, y };
       }
     }
   }
 
   return null;
+}
+
+function getMapDoors(mapId = currentMapId) {
+  const mapDoors = getMapDefinition(mapId).doors || [];
+  return mapDoors
+    .map((door) => resolveDoorPlacement(door))
+    .filter(Boolean);
 }
 
 function createDoorPiece(door) {
@@ -2629,6 +2643,8 @@ function createHealingTilePiece(tile) {
 function buildGrid() {
   const fragment = document.createDocumentFragment();
   const healingTileLookup = new Set(getHealingTilesForMap().map((tile) => `${tile.x},${tile.y}`));
+  const zoneType = getCurrentMapDefinition().metadata?.zoneType || 'starter';
+  gridBoard.dataset.zoneType = zoneType;
 
   for (let y = 0; y < GRID_SIZE; y += 1) {
     for (let x = 0; x < GRID_SIZE; x += 1) {
@@ -2638,7 +2654,9 @@ function buildGrid() {
       const tileType = getTileDefinitionAt(x, y)?.tileType || TERRAIN_TILE_TYPES.WALL;
       const terrainClass = tileType === TERRAIN_TILE_TYPES.GROUND
         ? 'tile-ground'
-        : (tileType === TERRAIN_TILE_TYPES.SWAMP ? 'tile-swamp' : 'tile-wall');
+        : (tileType === TERRAIN_TILE_TYPES.SWAMP
+          ? 'tile-swamp'
+          : (tileType === TERRAIN_TILE_TYPES.EMBER ? 'tile-ember' : 'tile-wall'));
       tile.className = `grid-tile ${terrainClass}${isHealingTile ? ' tile-healing' : ''}`;
       tile.dataset.x = String(x);
       tile.dataset.y = String(y);
@@ -2655,10 +2673,10 @@ function buildGrid() {
   }
 
   gridBoard.innerHTML = '';
-  const door = getStarterDoorForMap();
+  const doors = getMapDoors();
   const healingPieces = getHealingTilesForMap().map((tile) => createHealingTilePiece(tile));
   const npcPieces = npcStates.map((npc) => createNpcPiece(npc));
-  const doorPieces = door ? [createDoorPiece(door)] : [];
+  const doorPieces = doors.map((door) => createDoorPiece(door));
   gridBoard.append(fragment, ...healingPieces, ...doorPieces, playerPiece, ...enemyStates.map((enemy) => createEnemyPiece(enemy)), ...npcPieces);
   applyCoordinateVisibility();
   updatePlayerPiece();
@@ -2764,8 +2782,8 @@ function enterBattleMode(enemy) {
 }
 
 function getInteractableAtTile(x, y) {
-  const door = getStarterDoorForMap();
-  if (door && door.x === x && door.y === y) {
+  const door = getMapDoors().find((entry) => entry.x === x && entry.y === y);
+  if (door) {
     return { type: 'door', entity: door };
   }
 
@@ -2798,7 +2816,7 @@ function tryInteractWithEntity(tileX, tileY) {
   } else if (target.type === 'npc') {
     enterDialogueMode(target.entity);
   } else if (target.type === 'door') {
-    tryUseStarterDoor();
+    tryUseDoor(target.entity);
     return true;
   }
 
