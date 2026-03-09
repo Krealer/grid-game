@@ -1297,3 +1297,24 @@ html[dir='rtl'] #party-back {
 html[dir='rtl'] .medal-row {
   text-align: right;
 }
+
+.debug-overlay {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 9999;
+  width: min(92vw, 340px);
+  max-height: min(78vh, 560px);
+  overflow: auto;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgb(131 172 255 / 50%);
+  background: rgb(5 11 24 / 86%);
+  box-shadow: 0 8px 26px rgb(0 0 0 / 45%);
+  color: #dce9ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.73rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  pointer-events: none;
+}
