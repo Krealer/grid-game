@@ -4,6 +4,7 @@ import { STARTER_ENEMY_STARTS, SECOND_MAP_ENEMY_STARTS, ENEMY_SPECIES_DEFINITION
 import { COMPANION_DEFINITIONS, PLAYER_CLASS_STATS, LEVEL_GROWTH_BY_CLASS } from './data/characters.js';
 import { GEAR_ITEM_DEFINITIONS, DEFAULT_EQUIPPED_GEAR, EQUIPMENT_SLOT_ORDER, EQUIPMENT_SLOT_TYPES } from './data/gear.js';
 import { DIALOGUE_DEFINITIONS_BY_NPC_ID } from './data/dialogue.js';
+import { STORY_CONDITIONED_DOOR_EVENT_DEFINITIONS, resolveStoryConditionedRoute } from './data/events.js';
 import { translations } from './data/localization.js';
 import { SKILL_DEFINITIONS } from './data/skills.js';
 import { MEDAL_DEFINITIONS, MEDAL_ORDER } from './data/medals.js';
@@ -1311,7 +1312,15 @@ function matchesDialogueConditions(node, slot) {
 }
 
 function getCurrentDialogueNode() {
-  if (!dialogueState.nodeId || !dialogueState.npcId) {
+  if (!dialogueState.nodeId) {
+    return null;
+  }
+
+  if (dialogueState.scriptedNodes) {
+    return dialogueState.scriptedNodes[dialogueState.nodeId] || null;
+  }
+
+  if (!dialogueState.npcId) {
     return null;
   }
 
@@ -1442,8 +1451,18 @@ function applyDialogueEffects(effects) {
 }
 
 function completeDialogueAndReturnToMap() {
+  const onComplete = dialogueState.onComplete;
   dialogueState.npcId = null;
   dialogueState.nodeId = null;
+  dialogueState.scriptedNodes = null;
+  dialogueState.scriptedSpeakerKey = null;
+  dialogueState.onComplete = null;
+
+  if (typeof onComplete === 'function') {
+    onComplete();
+    return;
+  }
+
   renderGameplayInfo();
   showScreen('game');
 }
@@ -1488,7 +1507,7 @@ function renderDialogueUI() {
   }
 
   const activeNpc = npcStates.find((npc) => npc.id === dialogueState.npcId);
-  const npcNameKey = activeNpc?.nameKey || 'npcGuide';
+  const npcNameKey = dialogueState.scriptedSpeakerKey || activeNpc?.nameKey || 'npcGuide';
   const speakerName = line.speaker === 'player' ? locale.dialoguePlayerLabel : (locale[npcNameKey] || locale.npcGuide);
   textNodes.dialogueSpeaker.textContent = speakerName;
   textNodes.dialogueLine.textContent = locale[line.textKey];
@@ -1536,6 +1555,9 @@ function enterDialogueMode(npc) {
 
   dialogueState.npcId = npc.id;
   dialogueState.nodeId = startNodeId;
+  dialogueState.scriptedNodes = null;
+  dialogueState.scriptedSpeakerKey = null;
+  dialogueState.onComplete = null;
   renderDialogueUI();
   showScreen('dialogue');
 }
@@ -2274,6 +2296,66 @@ function transitionToMap(mapId, spawnOverride = null) {
   return true;
 }
 
+function openScriptedDialogueSequence(textKeys, onComplete, speakerKey = 'narrator') {
+  if (!Array.isArray(textKeys) || textKeys.length === 0) {
+    if (typeof onComplete === 'function') {
+      onComplete();
+    }
+    return;
+  }
+
+  const nodes = textKeys.reduce((result, textKey, index) => {
+    const nodeId = `scripted_${index}`;
+    const nextNodeId = index < textKeys.length - 1 ? `scripted_${index + 1}` : null;
+    result[nodeId] = {
+      id: nodeId,
+      speaker: 'npc',
+      textKey,
+      nextNodeId
+    };
+    return result;
+  }, {});
+
+  dialogueState.npcId = null;
+  dialogueState.nodeId = 'scripted_0';
+  dialogueState.scriptedNodes = nodes;
+  dialogueState.scriptedSpeakerKey = speakerKey;
+  dialogueState.onComplete = typeof onComplete === 'function' ? onComplete : null;
+  renderDialogueUI();
+  showScreen('dialogue');
+}
+
+function runStoryConditionedDoorEvent(door, slot) {
+  const eventDefinition = STORY_CONDITIONED_DOOR_EVENT_DEFINITIONS[door.id];
+  if (!eventDefinition) {
+    return transitionToMap(door.targetMapId, door.targetSpawn);
+  }
+
+  const eventFlags = slot.worldProgress?.triggeredEventFlags || {};
+  const routeChoice = resolveStoryConditionedRoute(slot);
+  const isCompleted = Boolean(eventFlags[eventDefinition.firstCompletedFlag]);
+  const textKeys = isCompleted
+    ? eventDefinition.repeatTextKeysByRoute[routeChoice]
+    : eventDefinition.firstTimeTextKeysByRoute[routeChoice];
+
+  const nextFlags = {
+    ...eventFlags,
+    [eventDefinition.firstSeenFlag]: true,
+    [eventDefinition.firstCompletedFlag]: true
+  };
+
+  updateSlot(currentSlotId, {
+    worldProgress: {
+      triggeredEventFlags: nextFlags
+    }
+  });
+
+  openScriptedDialogueSequence(textKeys, () => {
+    transitionToMap(door.targetMapId, door.targetSpawn);
+  });
+  return true;
+}
+
 function tryUseDoor(door) {
   if (!door?.targetMapId) {
     return false;
@@ -2290,6 +2372,15 @@ function tryUseDoor(door) {
     }
 
     return transitionToMap(door.targetMapId, door.targetSpawn);
+  }
+
+  const slot = getSlotById(currentSlotId);
+  if (!slot) {
+    return false;
+  }
+
+  if (STORY_CONDITIONED_DOOR_EVENT_DEFINITIONS[door.id]) {
+    return runStoryConditionedDoorEvent(door, slot);
   }
 
   return transitionToMap(door.targetMapId, door.targetSpawn);

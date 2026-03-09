@@ -22,7 +22,13 @@ export const playerState = {
   lastTimestamp: null
 };
 
-export const dialogueState = { npcId: null, nodeId: null };
+export const dialogueState = {
+  npcId: null,
+  nodeId: null,
+  scriptedNodes: null,
+  scriptedSpeakerKey: null,
+  onComplete: null
+};
 export const battleState = {
   menu: BATTLE_MENUS.ROOT,
   enemyId: null,
