@@ -12,7 +12,7 @@ const STABLE_ID_PATTERNS = {
   item: /^item_[a-z0-9]+(?:_[a-z0-9]+)*$/
 };
 
-const ENEMY_STARTS = [
+const STARTER_ENEMY_STARTS = [
   { id: 'enemy_fire_slime_01', x: 3, y: 0, nameKey: 'fireSlime', element: 'fire' },
   { id: 'enemy_earth_slime_01', x: 6, y: 2, nameKey: 'earthSlime', element: 'earth' },
   { id: 'enemy_water_slime_01', x: 9, y: 4, nameKey: 'waterSlime', element: 'water' }
@@ -26,8 +26,10 @@ const STARTER_REQUIRED_SLIME_IDS = [
 
 const STARTER_DOOR_EVENT_FLAG = 'event_starter_door_spawned';
 const STARTER_DOOR = { id: 'door_starter_exit', type: 'door', x: 10, y: 10 };
+const SECOND_MAP_ID = 'map_second_field';
+const SECOND_MAP_ENTRY = { x: 1, y: 1 };
 
-const NPC_TEMPLATE = { id: 'npc_starter_guide', type: 'npc', x: 11, y: 11, nameKey: 'npcGuide' };
+const STARTER_NPC_TEMPLATE = { id: 'npc_starter_guide', type: 'npc', x: 11, y: 11, nameKey: 'npcGuide' };
 
 const STARTER_GUIDE_DIALOGUE_NODES = {
   intro_question: {
@@ -143,7 +145,7 @@ const STARTER_GUIDE_DIALOGUE_FLOW = {
   }
 };
 
-const MAP_LAYOUT = [
+const STARTER_MAP_LAYOUT = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   [0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0],
   [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
@@ -157,6 +159,40 @@ const MAP_LAYOUT = [
   [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
   [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]
 ];
+
+const SECOND_MAP_LAYOUT = [
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+  [1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1],
+  [1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1],
+  [1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+  [1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1],
+  [1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1],
+  [1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1],
+  [1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1],
+  [1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+  [1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+];
+
+const MAP_DEFINITIONS = {
+  [DEFAULT_MAP_ID]: {
+    id: DEFAULT_MAP_ID,
+    layout: STARTER_MAP_LAYOUT,
+    spawn: { x: 0, y: 0 },
+    enemies: STARTER_ENEMY_STARTS,
+    npcs: [STARTER_NPC_TEMPLATE],
+    doors: [STARTER_DOOR]
+  },
+  [SECOND_MAP_ID]: {
+    id: SECOND_MAP_ID,
+    layout: SECOND_MAP_LAYOUT,
+    spawn: SECOND_MAP_ENTRY,
+    enemies: [],
+    npcs: [],
+    doors: []
+  }
+};
 
 const screens = {
   language: document.getElementById('language-screen'),
@@ -258,6 +294,7 @@ let currentSlotId = null;
 let gameMenuStatusKey = '';
 let showCoordinates = false;
 let pendingDeleteSlotId = null;
+let currentMapId = DEFAULT_MAP_ID;
 
 const playerState = {
   tileX: 0,
@@ -736,8 +773,17 @@ function isInsideGrid(x, y) {
   return x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE;
 }
 
-function isGround(x, y) {
-  return isInsideGrid(x, y) && MAP_LAYOUT[y][x] === 0;
+function getMapDefinition(mapId = currentMapId) {
+  return MAP_DEFINITIONS[mapId] || MAP_DEFINITIONS[DEFAULT_MAP_ID];
+}
+
+function getCurrentMapDefinition() {
+  return getMapDefinition(currentMapId);
+}
+
+function isGround(x, y, mapId = currentMapId) {
+  const map = getMapDefinition(mapId);
+  return isInsideGrid(x, y) && map.layout[y][x] === 0;
 }
 
 function isValidEnemySpawn(x, y, occupiedKeys) {
@@ -780,10 +826,11 @@ function createEnemyState(enemyTemplate, occupiedKeys) {
   };
 }
 
-function createInitialEnemyStates() {
+function createInitialEnemyStates(mapId = currentMapId) {
   const occupiedKeys = new Set();
+  const enemyTemplates = getMapDefinition(mapId).enemies || [];
 
-  return ENEMY_STARTS.map((enemyTemplate) => createEnemyState(enemyTemplate, occupiedKeys));
+  return enemyTemplates.map((enemyTemplate) => createEnemyState(enemyTemplate, occupiedKeys));
 }
 
 function isValidNpcSpawn(x, y, enemyList) {
@@ -794,22 +841,27 @@ function isValidNpcSpawn(x, y, enemyList) {
   return !enemyList.some((enemy) => enemy.x === x && enemy.y === y);
 }
 
-function createNpcState(enemyList) {
-  const desired = { x: NPC_TEMPLATE.x, y: NPC_TEMPLATE.y };
+function createNpcState(enemyList, mapId = currentMapId) {
+  const npcTemplate = (getMapDefinition(mapId).npcs || [])[0];
+  if (!npcTemplate) {
+    return null;
+  }
+
+  const desired = { x: npcTemplate.x, y: npcTemplate.y };
 
   if (isValidNpcSpawn(desired.x, desired.y, enemyList)) {
-    return { ...NPC_TEMPLATE, x: desired.x, y: desired.y };
+    return { ...npcTemplate, x: desired.x, y: desired.y };
   }
 
   for (let y = GRID_SIZE - 1; y >= 0; y -= 1) {
     for (let x = GRID_SIZE - 1; x >= 0; x -= 1) {
       if (isValidNpcSpawn(x, y, enemyList)) {
-        return { ...NPC_TEMPLATE, x, y };
+        return { ...npcTemplate, x, y };
       }
     }
   }
 
-  return { ...NPC_TEMPLATE, x: 0, y: 0 };
+  return { ...npcTemplate, x: 0, y: 0 };
 }
 
 function getNpcAtTile(x, y) {
@@ -882,12 +934,15 @@ function getDefaultSlots() {
   return Array.from({ length: SLOT_COUNT }, (_, index) => createCanonicalSlot(index + 1));
 }
 
-function normalizePosition(playerData) {
-  const x = Number.isInteger(playerData?.x) ? playerData.x : 0;
-  const y = Number.isInteger(playerData?.y) ? playerData.y : 0;
+function normalizePosition(playerData, mapId = DEFAULT_MAP_ID) {
+  const map = getMapDefinition(mapId);
+  const fallbackX = map.spawn.x;
+  const fallbackY = map.spawn.y;
+  const x = Number.isInteger(playerData?.x) ? playerData.x : fallbackX;
+  const y = Number.isInteger(playerData?.y) ? playerData.y : fallbackY;
 
-  if (!isGround(x, y)) {
-    return { x: 0, y: 0 };
+  if (!isGround(x, y, mapId)) {
+    return { x: fallbackX, y: fallbackY };
   }
 
   return { x, y };
@@ -911,6 +966,11 @@ function normalizeStableId(value, pattern, fallback = null) {
   }
 
   return pattern.test(value) ? value : fallback;
+}
+
+function normalizeMapId(value) {
+  const stableId = normalizeStableId(value, STABLE_ID_PATTERNS.map, DEFAULT_MAP_ID);
+  return MAP_DEFINITIONS[stableId] ? stableId : DEFAULT_MAP_ID;
 }
 
 function normalizeStableIdArray(value, pattern) {
@@ -972,16 +1032,7 @@ function normalizeDefeatedEnemyIds(defeatedEnemyIds) {
     return [];
   }
 
-  const validEnemyIds = new Set(ENEMY_STARTS.map((enemy) => enemy.id));
-  const uniqueIds = new Set();
-
-  defeatedEnemyIds.forEach((enemyId) => {
-    if (typeof enemyId === 'string' && validEnemyIds.has(enemyId)) {
-      uniqueIds.add(enemyId);
-    }
-  });
-
-  return [...uniqueIds];
+  return [...new Set(defeatedEnemyIds.filter((enemyId) => typeof enemyId === 'string'))];
 }
 
 function areAllStarterSlimesDefeated(defeatedEnemyIds) {
@@ -1045,10 +1096,13 @@ function synchronizeStarterDoorProgress(slotId, defeatedEnemyIdsOverride) {
 
 function normalizeCanonicalSlot(slot, slotId) {
   const canonical = createCanonicalSlot(slotId);
+  const normalizedMapId = typeof slot?.playerWorldPosition?.currentMapId === 'string'
+    ? normalizeMapId(slot.playerWorldPosition.currentMapId)
+    : DEFAULT_MAP_ID;
   const position = normalizePosition({
     x: slot?.playerWorldPosition?.playerX,
     y: slot?.playerWorldPosition?.playerY
-  });
+  }, normalizedMapId);
 
   return {
     metadata: {
@@ -1063,9 +1117,7 @@ function normalizeCanonicalSlot(slot, slotId) {
       storyModeChoice: normalizeStringEnum(slot?.playerIdentity?.storyModeChoice, ['story', 'no_story'], 'story')
     },
     playerWorldPosition: {
-      currentMapId: typeof slot?.playerWorldPosition?.currentMapId === 'string'
-        ? normalizeStableId(slot.playerWorldPosition.currentMapId, STABLE_ID_PATTERNS.map, DEFAULT_MAP_ID)
-        : DEFAULT_MAP_ID,
+      currentMapId: normalizedMapId,
       playerX: position.x,
       playerY: position.y
     },
@@ -1093,7 +1145,7 @@ function normalizeCanonicalSlot(slot, slotId) {
 
 function normalizeLegacySlot(slot, slotId) {
   const canonical = createCanonicalSlot(slotId);
-  const position = normalizePosition(slot?.playerData);
+  const position = normalizePosition(slot?.playerData, DEFAULT_MAP_ID);
 
   canonical.playerIdentity.chosenElement = normalizeStringEnum(slot?.element, ['fire', 'water', 'earth']);
   canonical.playerIdentity.chosenClass = normalizeStringEnum(slot?.class, ['warrior', 'mage']);
@@ -1103,10 +1155,13 @@ function normalizeLegacySlot(slot, slotId) {
   return canonical;
 }
 
-function createEnemyStatesFromDefeatedIds(defeatedEnemyIds) {
-  const defeated = new Set(normalizeDefeatedEnemyIds(defeatedEnemyIds));
+function createEnemyStatesFromDefeatedIds(defeatedEnemyIds, mapId = currentMapId) {
+  if (mapId !== DEFAULT_MAP_ID) {
+    return createInitialEnemyStates(mapId);
+  }
 
-  return createInitialEnemyStates().filter((enemy) => !defeated.has(enemy.id));
+  const defeated = new Set(normalizeDefeatedEnemyIds(defeatedEnemyIds));
+  return createInitialEnemyStates(mapId).filter((enemy) => !defeated.has(enemy.id));
 }
 
 function loadSlots() {
@@ -2006,10 +2061,10 @@ function goToSaveScreen() {
 
 function goToElementScreen(slotId) {
   currentSlotId = slotId;
+  currentMapId = DEFAULT_MAP_ID;
   showCoordinates = false;
   applyCoordinateVisibility();
-  enemyStates = createInitialEnemyStates();
-  npcState = createNpcState(enemyStates);
+  initializeMapState(DEFAULT_MAP_ID, []);
   buildGrid();
   showScreen('element');
 }
@@ -2029,6 +2084,61 @@ function setPlayerPosition(x, y) {
   playerState.stepElapsed = 0;
   playerState.lastTimestamp = null;
   updatePlayerPiece();
+}
+
+function initializeMapState(mapId, defeatedEnemyIds = []) {
+  currentMapId = getMapDefinition(mapId).id;
+  enemyStates = createEnemyStatesFromDefeatedIds(defeatedEnemyIds, currentMapId);
+  npcState = createNpcState(enemyStates, currentMapId);
+}
+
+function canUseStarterDoor(slot) {
+  const keyIds = new Set(slot?.worldProgress?.obtainedKeyIds || []);
+  return keyIds.has('key_story') || keyIds.has('key_no_story');
+}
+
+function transitionToMap(mapId, spawnOverride = null) {
+  if (!currentSlotId) {
+    return false;
+  }
+
+  const slot = getSlotById(currentSlotId);
+  if (!slot) {
+    return false;
+  }
+
+  const map = getMapDefinition(mapId);
+  const spawn = normalizePosition(spawnOverride || map.spawn, map.id);
+  const defeatedEnemyIds = slot.worldProgress?.defeatedEnemyIds || [];
+
+  initializeMapState(map.id, defeatedEnemyIds);
+  setPlayerPosition(spawn.x, spawn.y);
+  buildGrid();
+
+  updateSlot(currentSlotId, {
+    playerWorldPosition: {
+      currentMapId: map.id,
+      playerX: spawn.x,
+      playerY: spawn.y
+    }
+  });
+
+  renderGameplayInfo();
+  renderInfoDetails();
+  return true;
+}
+
+function tryUseStarterDoor() {
+  if (!currentSlotId || currentMapId !== DEFAULT_MAP_ID) {
+    return false;
+  }
+
+  const slot = synchronizeStarterDoorProgress(currentSlotId) || getSlotById(currentSlotId);
+  if (!slot || !getStarterDoorState(slot).spawned || !canUseStarterDoor(slot)) {
+    return false;
+  }
+
+  return transitionToMap(SECOND_MAP_ID);
 }
 
 function beginNextStep() {
@@ -2115,7 +2225,7 @@ function writeCurrentGameToSlot() {
       storyModeChoice: slot.playerIdentity.storyModeChoice
     },
     playerWorldPosition: {
-      currentMapId: slot.playerWorldPosition.currentMapId,
+      currentMapId,
       playerX: pos.x,
       playerY: pos.y
     },
@@ -2135,7 +2245,12 @@ function writeCurrentGameToSlot() {
 }
 
 function getDefeatedEnemyIdsFromCurrentState() {
-  return ENEMY_STARTS
+  if (currentMapId !== DEFAULT_MAP_ID) {
+    const slot = currentSlotId ? getSlotById(currentSlotId) : null;
+    return normalizeDefeatedEnemyIds(slot?.worldProgress?.defeatedEnemyIds);
+  }
+
+  return STARTER_ENEMY_STARTS
     .filter((enemyStart) => !enemyStates.some((enemy) => enemy.id === enemyStart.id))
     .map((enemy) => enemy.id);
 }
@@ -2251,7 +2366,7 @@ function isValidDoorSpawn(x, y, enemyList, npc, playerPos) {
 }
 
 function getStarterDoorForMap() {
-  if (!currentSlotId) {
+  if (!currentSlotId || currentMapId !== DEFAULT_MAP_ID) {
     return null;
   }
 
@@ -2457,6 +2572,7 @@ function tryInteractWithEntity(tileX, tileY) {
   } else if (target.type === 'npc') {
     enterDialogueMode(target.entity);
   } else if (target.type === 'door') {
+    tryUseStarterDoor();
     return true;
   }
 
@@ -2682,17 +2798,17 @@ saveSlotsList.addEventListener('click', (event) => {
   }
 
   currentSlotId = slotId;
+  currentMapId = getMapDefinition(slot.playerWorldPosition?.currentMapId).id;
   showCoordinates = slot.settings?.showCoordinates || false;
   applyCoordinateVisibility();
-  enemyStates = createEnemyStatesFromDefeatedIds(slot.worldProgress?.defeatedEnemyIds);
   synchronizeStarterDoorProgress(slotId, slot.worldProgress?.defeatedEnemyIds);
-  npcState = createNpcState(enemyStates);
-  buildGrid();
+  initializeMapState(currentMapId, slot.worldProgress?.defeatedEnemyIds || []);
   const savedPos = normalizePosition({
     x: slot.playerWorldPosition?.playerX,
     y: slot.playerWorldPosition?.playerY
-  });
+  }, currentMapId);
   setPlayerPosition(savedPos.x, savedPos.y);
+  buildGrid();
   goToGameScreen();
 });
 
@@ -2761,13 +2877,16 @@ classButtons.forEach((button) => {
     });
 
     const slot = getSlotById(currentSlotId);
+    currentMapId = getMapDefinition(slot?.playerWorldPosition?.currentMapId).id;
     const start = normalizePosition({
       x: slot?.playerWorldPosition?.playerX,
       y: slot?.playerWorldPosition?.playerY
-    });
+    }, currentMapId);
     showCoordinates = slot?.settings?.showCoordinates || false;
     applyCoordinateVisibility();
+    initializeMapState(currentMapId, slot?.worldProgress?.defeatedEnemyIds || []);
     setPlayerPosition(start.x, start.y);
+    buildGrid();
 
     renderClassConfirmation();
     renderSaveSlots();
