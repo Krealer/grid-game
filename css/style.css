@@ -704,6 +704,10 @@ html[dir='rtl'] .dialogue-choice {
   margin-top: 1rem;
 }
 
+.battle-status-companion {
+  margin-top: 1rem;
+}
+
 .battle-subtitle {
   margin-top: 1rem;
 }
