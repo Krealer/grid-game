@@ -187,6 +187,7 @@
         <p id="game-menu-status" class="subtitle"></p>
         <ul class="menu-options">
           <li><button type="button" class="menu-option" id="gm-back-to-game"></button></li>
+          <li><button type="button" class="menu-option" id="gm-party"></button></li>
           <li><button type="button" class="menu-option" id="gm-inventory"></button></li>
           <li><button type="button" class="menu-option" id="gm-info"></button></li>
           <li><button type="button" class="menu-option" id="gm-settings"></button></li>
@@ -214,6 +215,23 @@
         <h1 id="inventory-title"></h1>
         <p id="inventory-helper" class="subtitle"></p>
         <button type="button" class="back-button" id="inventory-back"></button>
+      </div>
+    </section>
+
+    <section id="party-screen" class="screen" hidden aria-labelledby="party-title">
+      <div class="card">
+        <h1 id="party-title"></h1>
+        <div class="party-section">
+          <h2 id="party-active-title" class="party-section-title"></h2>
+          <ul id="party-active-list" class="menu-options party-list" aria-live="polite"></ul>
+          <p id="party-active-empty" class="subtitle"></p>
+        </div>
+        <div class="party-section">
+          <h2 id="party-recruited-title" class="party-section-title"></h2>
+          <ul id="party-recruited-list" class="menu-options party-list" aria-live="polite"></ul>
+          <p id="party-recruited-empty" class="subtitle"></p>
+        </div>
+        <button type="button" class="back-button" id="party-back"></button>
       </div>
     </section>
 
