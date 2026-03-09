@@ -1478,6 +1478,10 @@ function applyDialogueEffects(effects) {
     npcStateFlags: slot.npcStateFlags || {}
   };
 
+  const healedMemberStates = effects.healActiveParty
+    ? healMemberStatesToFull(recruitmentState.memberStates, getHealingTargetMemberIds(recruitmentState.activePartyMemberIds))
+    : recruitmentState.memberStates;
+
   updateSlot(currentSlotId, {
     playerIdentity: {
       storyModeChoice: effects.setStoryModeChoice || slot.playerIdentity.storyModeChoice
@@ -1496,7 +1500,7 @@ function applyDialogueEffects(effects) {
     party: {
       recruitedCompanionIds: recruitmentState.recruitedCompanionIds,
       activePartyMemberIds: recruitmentState.activePartyMemberIds,
-      memberStates: recruitmentState.memberStates,
+      memberStates: healedMemberStates,
       companionWorldStateFlags: recruitmentState.companionWorldStateFlags
     }
   });
@@ -1867,32 +1871,39 @@ function buildBattleProgressSummary(activeMemberIds, progressionResult) {
     });
 }
 
+function getHealingTargetMemberIds(activePartyMemberIds = []) {
+  return [...new Set([MAIN_PARTY_MEMBER_ID, ...(activePartyMemberIds || [])])];
+}
+
+function healMemberStatesToFull(memberStates, memberIds) {
+  const healedMemberStates = { ...memberStates };
+  memberIds.forEach((memberId) => {
+    const member = healedMemberStates[memberId];
+    if (!member) {
+      return;
+    }
+    healedMemberStates[memberId] = {
+      ...member,
+      currentHp: member.maxHp
+    };
+  });
+  return healedMemberStates;
+}
+
 function healActivePartyToFull(slotId) {
   const slot = getSlotById(slotId);
   if (!slot) {
     return false;
   }
 
-  const activeIds = slot.party?.activePartyMemberIds?.length
-    ? slot.party.activePartyMemberIds
-    : [MAIN_PARTY_MEMBER_ID];
+  const activeIds = getHealingTargetMemberIds(slot.party?.activePartyMemberIds || []);
   const memberStates = normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity);
-
-  activeIds.forEach((memberId) => {
-    const member = memberStates[memberId];
-    if (!member) {
-      return;
-    }
-    memberStates[memberId] = {
-      ...member,
-      currentHp: member.maxHp
-    };
-  });
+  const healedMemberStates = healMemberStatesToFull(memberStates, activeIds);
 
   updateSlot(slotId, {
     party: {
-      activePartyMemberIds: activeIds,
-      memberStates
+      activePartyMemberIds: slot.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID],
+      memberStates: healedMemberStates
     }
   });
 

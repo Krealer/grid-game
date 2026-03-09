@@ -5,7 +5,7 @@ export const RECRUITABLE_NPC_TEMPLATE = { id: 'npc_recruit_01', type: 'recruitab
 
 export const SAFE_VILLAGE_LORE_NPC_TEMPLATE = { id: 'npc_safe_villager_lore_01', type: 'npc', x: 3, y: 3, nameKey: 'npcSafeLoreMira' };
 export const SAFE_VILLAGE_GUIDE_NPC_TEMPLATE = { id: 'npc_safe_village_guide_01', type: 'npc', x: 6, y: 5, nameKey: 'npcSafeGuideToma' };
-export const SAFE_VILLAGE_SERVICE_NPC_TEMPLATE = { id: 'npc_safe_service_01', type: 'service_npc', x: 8, y: 8, nameKey: 'npcSafeCaretakerNia', serviceTag: 'future_service_hub', originMapId: SAFE_VILLAGE_MAP_ID, originX: 8, originY: 8 };
+export const SAFE_VILLAGE_HEALER_NPC_TEMPLATE = { id: 'npc_safe_healer_01', type: 'service_npc', x: 8, y: 8, nameKey: 'npcSafeHealerNia', serviceTag: 'healer', originMapId: SAFE_VILLAGE_MAP_ID, originX: 8, originY: 8 };
 
 
 const STARTER_GUIDE_DIALOGUE_NODES = {
@@ -41,9 +41,28 @@ const SAFE_GUIDE_DIALOGUE_NODES = {
   no_story_route: { id: 'no_story_route', speaker: 'npc', textKey: 'npcSafeGuideNoStoryRoute', nextNodeId: null, conditions: { storyModeChoice: 'no_story' } }
 };
 
-const SAFE_SERVICE_DIALOGUE_NODES = {
-  intro: { id: 'intro', speaker: 'npc', textKey: 'npcSafeCaretakerNiaIntro', nextNodeId: null, effects: { npcFlags: { npc_safe_service_01_intro_seen: true } } },
-  repeat: { id: 'repeat', speaker: 'npc', textKey: 'npcSafeCaretakerNiaRepeat', nextNodeId: null }
+const SAFE_HEALER_DIALOGUE_NODES = {
+  intro: {
+    id: 'intro',
+    speaker: 'npc',
+    textKey: 'npcSafeHealerPrompt',
+    choices: [
+      {
+        id: 'yes',
+        textKey: 'yes',
+        nextNodeId: 'healed',
+        effects: { healActiveParty: true, npcFlags: { npc_safe_healer_01_intro_seen: true } }
+      },
+      {
+        id: 'no',
+        textKey: 'no',
+        nextNodeId: 'declined',
+        effects: { npcFlags: { npc_safe_healer_01_intro_seen: true } }
+      }
+    ]
+  },
+  healed: { id: 'healed', speaker: 'npc', textKey: 'npcSafeHealerConfirmed', nextNodeId: null },
+  declined: { id: 'declined', speaker: 'npc', textKey: 'npcSafeHealerDeclined', nextNodeId: null }
 };
 
 const getStarterGuideDialogueStartNodeIdForSlot = (slot) => {
@@ -78,15 +97,12 @@ const getSafeGuideStartNodeIdForSlot = (slot) => {
   return storyModeChoice === 'no_story' ? 'no_story_route' : 'story_route';
 };
 
-const getSafeServiceStartNodeIdForSlot = (slot) => {
-  const seenIntro = Boolean(slot?.npcStateFlags?.npc_safe_service_01_intro_seen);
-  return seenIntro ? 'repeat' : 'intro';
-};
+const getSafeHealerStartNodeIdForSlot = () => 'intro';
 
 export const DIALOGUE_DEFINITIONS_BY_NPC_ID = {
   npc_starter_guide: { nodes: STARTER_GUIDE_DIALOGUE_NODES, getStartNodeId: getStarterGuideDialogueStartNodeIdForSlot },
   npc_recruit_01: { nodes: RECRUIT_ROWAN_DIALOGUE_NODES, getStartNodeId: getRecruitRowanStartNodeIdForSlot },
   npc_safe_villager_lore_01: { nodes: SAFE_LORE_DIALOGUE_NODES, getStartNodeId: () => 'intro' },
   npc_safe_village_guide_01: { nodes: SAFE_GUIDE_DIALOGUE_NODES, getStartNodeId: getSafeGuideStartNodeIdForSlot },
-  npc_safe_service_01: { nodes: SAFE_SERVICE_DIALOGUE_NODES, getStartNodeId: getSafeServiceStartNodeIdForSlot }
+  npc_safe_healer_01: { nodes: SAFE_HEALER_DIALOGUE_NODES, getStartNodeId: getSafeHealerStartNodeIdForSlot }
 };
