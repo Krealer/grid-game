@@ -3631,9 +3631,15 @@ function getEventClientPoint(event) {
 
 function addUnifiedPressListener(element, onPress) {
   let suppressNextClick = false;
+  let suppressClicksUntil = 0;
+  const TOUCH_CLICK_SUPPRESSION_MS = 700;
   const supportsPointerEvents = typeof window !== 'undefined' && 'PointerEvent' in window;
 
   element.addEventListener('click', (event) => {
+    if (Date.now() < suppressClicksUntil) {
+      return;
+    }
+
     if (suppressNextClick) {
       suppressNextClick = false;
       return;
@@ -3645,6 +3651,9 @@ function addUnifiedPressListener(element, onPress) {
   const handleTouchLikePress = (event) => {
     const handled = onPress(event) === true;
     suppressNextClick = handled;
+    if (handled) {
+      suppressClicksUntil = Date.now() + TOUCH_CLICK_SUPPRESSION_MS;
+    }
 
     if (handled && event.cancelable) {
       event.preventDefault();
