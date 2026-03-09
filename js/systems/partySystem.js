@@ -11,7 +11,7 @@ export function createBattlePartyData(slot, { normalizePartyMemberStates, create
       return;
     }
 
-    const companionBattleData = createCompanionBattleData(memberId, memberStates[memberId]);
+    const companionBattleData = createCompanionBattleData(memberId, memberStates[memberId], slot);
     if (companionBattleData) {
       members.push({ ...companionBattleData, kind: 'companion' });
     }
@@ -20,7 +20,7 @@ export function createBattlePartyData(slot, { normalizePartyMemberStates, create
   return members;
 }
 
-export function updatePartyBattleMemberHp(slotId, partyMembers, { getSlotById, updateSlot, normalizePartyMemberStates }) {
+export function updatePartyBattleMemberHp(slotId, partyMembers, { getSlotById, updateSlot, normalizePartyMemberStates, getEffectiveMemberStats }) {
   const slot = getSlotById(slotId);
   if (!slot) {
     return;
@@ -37,7 +37,8 @@ export function updatePartyBattleMemberHp(slotId, partyMembers, { getSlotById, u
     }
 
     const baseState = memberStates[member.id];
-    const normalizedHp = Math.max(0, Math.min(baseState.maxHp, Math.floor(member.hp)));
+    const effectiveState = getEffectiveMemberStats ? getEffectiveMemberStats(baseState, slot) : baseState;
+    const normalizedHp = Math.max(0, Math.min(effectiveState.maxHp, Math.floor(member.hp)));
     memberStates[member.id] = {
       ...baseState,
       currentHp: normalizedHp
