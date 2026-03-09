@@ -4,5 +4,17 @@ export const LEVEL_GROWTH_BY_CLASS = {
   mage: { hp: 3, attack: 2 }
 };
 export const COMPANION_DEFINITIONS = {
-  companion_rowan_01: { id: 'companion_rowan_01', npcId: 'npc_recruit_01', nameKey: 'npcRecruitRowan', role: 'future_companion', className: 'warrior', element: 'earth', originMapId: 'map_second_field', originX: 9, originY: 1 }
+  companion_rowan_01: {
+    id: 'companion_rowan_01',
+    npcId: 'npc_recruit_01',
+    nameKey: 'npcRecruitRowan',
+    role: 'vanguard',
+    className: 'warrior',
+    element: 'earth',
+    combatStyle: 'frontline_offense',
+    skillIds: ['earth_slash'],
+    originMapId: 'map_second_field',
+    originX: 9,
+    originY: 1
+  }
 };

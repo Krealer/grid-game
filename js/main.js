@@ -1123,9 +1123,26 @@ function getPartyMemberDisplayName(memberId, locale) {
   return locale[companion.nameKey] || companion.id;
 }
 
+function getPartyMemberSummary(memberId, memberState, locale) {
+  if (!memberState) {
+    return '';
+  }
+
+  const roleKey = memberId === MAIN_PARTY_MEMBER_ID
+    ? memberState.className
+    : (COMPANION_DEFINITIONS[memberId]?.role === 'vanguard' ? 'companionRoleVanguard' : memberState.className);
+
+  return formatText(locale.partyMemberSummary, {
+    level: memberState.level,
+    role: locale[roleKey] || memberState.className,
+    element: locale[memberState.element] || memberState.element
+  });
+}
+
 function renderPartyScreen() {
   const locale = getLocale();
   const slot = currentSlotId ? getSlotById(currentSlotId) : null;
+  const memberStates = normalizePartyMemberStates(slot?.party?.memberStates, slot?.playerIdentity);
   const activeMemberIds = slot?.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID];
   const recruitedCompanionIds = slot?.party?.recruitedCompanionIds || [];
   const activeCompanionIds = activeMemberIds.filter((memberId) => memberId !== MAIN_PARTY_MEMBER_ID);
@@ -1136,7 +1153,7 @@ function renderPartyScreen() {
 
   const mainPlayerItem = document.createElement('li');
   mainPlayerItem.className = 'party-row';
-  mainPlayerItem.textContent = `${locale.battleStatusPlayer} — ${locale.cannotRemoveMainPlayer}`;
+  mainPlayerItem.textContent = `${locale.battleStatusPlayer} — ${getPartyMemberSummary(MAIN_PARTY_MEMBER_ID, memberStates[MAIN_PARTY_MEMBER_ID], locale)} — ${locale.cannotRemoveMainPlayer}`;
   partyActiveList.append(mainPlayerItem);
 
   activeCompanionIds.forEach((companionId) => {
@@ -1145,7 +1162,8 @@ function renderPartyScreen() {
 
     const label = document.createElement('span');
     label.className = 'party-member-label';
-    label.textContent = getPartyMemberDisplayName(companionId, locale);
+    const memberSummary = getPartyMemberSummary(companionId, memberStates[companionId], locale);
+    label.textContent = `${getPartyMemberDisplayName(companionId, locale)} — ${memberSummary}`;
 
     const removeButton = document.createElement('button');
     removeButton.type = 'button';
@@ -1161,7 +1179,8 @@ function renderPartyScreen() {
     const item = document.createElement('li');
     item.className = 'party-row';
     const statusKey = activeSet.has(companionId) ? 'activeLabel' : 'reserveLabel';
-    item.textContent = `${getPartyMemberDisplayName(companionId, locale)} — ${locale[statusKey]}`;
+    const memberSummary = getPartyMemberSummary(companionId, memberStates[companionId], locale);
+    item.textContent = `${getPartyMemberDisplayName(companionId, locale)} — ${memberSummary} — ${locale[statusKey]}`;
     partyRecruitedList.append(item);
   });
 
@@ -1342,6 +1361,10 @@ function createCompanionMemberState(companionId) {
     id: companion.id,
     className: companion.className,
     element: companion.element,
+    level: 1,
+    currentExp: 0,
+    expToNextLevel: getExpRequirementForLevel(1),
+    attack: getAttackForClass(companion.className),
     currentHp: getMaxHpForClass(companion.className),
     maxHp: getMaxHpForClass(companion.className)
   };
@@ -1373,8 +1396,8 @@ function applyRecruitmentEffects(effects, slot) {
     activePartyMemberIds.push(companionId);
   }
 
-  const companionState = createCompanionMemberState(companionId);
-  if (companionState) {
+  const companionState = memberStates[companionId] || createCompanionMemberState(companionId);
+  if (companionState && !memberStates[companionId]) {
     memberStates[companionId] = companionState;
   }
 
@@ -1638,6 +1661,60 @@ function createPlayerBattleData(slot) {
   };
 }
 
+function getCompanionOffensiveSkills(companionId) {
+  const companion = COMPANION_DEFINITIONS[companionId];
+  if (!companion) {
+    return [];
+  }
+
+  return (companion.skillIds || [])
+    .map((skillId) => SKILL_DEFINITIONS[skillId])
+    .filter(Boolean)
+    .map((skill) => ({ ...skill }));
+}
+
+function createCompanionBattleData(companionId, memberState) {
+  const companion = COMPANION_DEFINITIONS[companionId];
+  if (!companion || !memberState) {
+    return null;
+  }
+
+  return {
+    id: companionId,
+    nameKey: companion.nameKey,
+    role: companion.role,
+    class: memberState.className,
+    element: memberState.element,
+    level: memberState.level,
+    currentExp: memberState.currentExp,
+    expToNextLevel: memberState.expToNextLevel,
+    maxHp: memberState.maxHp,
+    hp: memberState.currentHp,
+    attack: memberState.attack,
+    skills: getCompanionOffensiveSkills(companionId)
+  };
+}
+
+function createBattlePartyData(slot) {
+  const memberStates = normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity);
+  const activeIds = slot.party?.activePartyMemberIds?.length ? slot.party.activePartyMemberIds : [MAIN_PARTY_MEMBER_ID];
+  const members = [];
+
+  activeIds.forEach((memberId) => {
+    if (memberId === MAIN_PARTY_MEMBER_ID) {
+      members.push({ id: MAIN_PARTY_MEMBER_ID, kind: 'player', ...createPlayerBattleData(slot) });
+      return;
+    }
+
+    const companionBattleData = createCompanionBattleData(memberId, memberStates[memberId]);
+    if (companionBattleData) {
+      members.push({ ...companionBattleData, kind: 'companion' });
+    }
+  });
+
+  return members;
+}
+
 function updateMainPartyMemberHp(slotId, currentHp) {
   const slot = getSlotById(slotId);
   if (!slot) {
@@ -1689,33 +1766,39 @@ function applyExperienceGain(memberState, expAmount) {
   return { updatedState, levelsGained };
 }
 
-function grantBattleExpToMainPlayer(slotId, expAmount) {
+function grantBattleExpToActiveParty(slotId, expAmount) {
   const slot = getSlotById(slotId);
   if (!slot) {
-    return { gainedExp: 0, levelsGained: 0, memberState: null };
+    return { gainedExp: 0, levelsGainedByMemberId: {}, memberState: null };
   }
 
-  const memberStates = normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity);
-  const currentMainState = memberStates[MAIN_PARTY_MEMBER_ID];
-  if (!currentMainState) {
-    return { gainedExp: 0, levelsGained: 0, memberState: null };
-  }
-
+  const activeIds = slot.party?.activePartyMemberIds?.length ? slot.party.activePartyMemberIds : [MAIN_PARTY_MEMBER_ID];
   const gainedExp = Math.max(0, Math.floor(expAmount));
-  const progressionResult = applyExperienceGain(currentMainState, gainedExp);
-  memberStates[MAIN_PARTY_MEMBER_ID] = progressionResult.updatedState;
+  const memberStates = normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity);
+  const levelsGainedByMemberId = {};
+
+  activeIds.forEach((memberId) => {
+    const memberState = memberStates[memberId];
+    if (!memberState) {
+      return;
+    }
+
+    const progressionResult = applyExperienceGain(memberState, gainedExp);
+    memberStates[memberId] = progressionResult.updatedState;
+    levelsGainedByMemberId[memberId] = progressionResult.levelsGained;
+  });
 
   updateSlot(slotId, {
     party: {
-      activePartyMemberIds: slot.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID],
+      activePartyMemberIds: activeIds,
       memberStates
     }
   });
 
   return {
     gainedExp,
-    levelsGained: progressionResult.levelsGained,
-    memberState: progressionResult.updatedState
+    levelsGainedByMemberId,
+    memberState: memberStates[MAIN_PARTY_MEMBER_ID]
   };
 }
 
@@ -1837,9 +1920,9 @@ function endBattleVictory() {
   battleState.resultLevelUps = 0;
 
   if (currentSlotId) {
-    const progressionResult = grantBattleExpToMainPlayer(currentSlotId, battleState.resultExpGained);
+    const progressionResult = grantBattleExpToActiveParty(currentSlotId, battleState.resultExpGained);
     battleState.resultExpGained = progressionResult.gainedExp;
-    battleState.resultLevelUps = progressionResult.levelsGained;
+    battleState.resultLevelUps = progressionResult.levelsGainedByMemberId[MAIN_PARTY_MEMBER_ID] || 0;
 
     const defeatedEnemyIds = getDefeatedEnemyIdsFromCurrentState();
     synchronizeStarterDoorProgress(currentSlotId, defeatedEnemyIds);
@@ -1947,6 +2030,7 @@ function renderBattleUI() {
   const locale = getLocale();
   const enemy = battleState.enemy;
   const player = battleState.player;
+  const companionCount = battleState.partyMembers.filter((member) => member.kind === 'companion').length;
 
   if (!enemy || !player) {
     textNodes.battleEnemyName.textContent = '';
@@ -2018,6 +2102,8 @@ function renderBattleUI() {
     textNodes.battleSubtitle.textContent = locale.battleChooseSkill;
   } else if (battleState.menu === BATTLE_MENUS.DEFENDERS) {
     textNodes.battleSubtitle.textContent = locale.defendersPlaceholder;
+  } else if (companionCount > 0) {
+    textNodes.battleSubtitle.textContent = formatText(locale.battleCompanionReady, { count: companionCount });
   } else {
     textNodes.battleSubtitle.textContent = '';
   }
@@ -2860,10 +2946,13 @@ function enterBattleMode(enemy) {
     return;
   }
 
+  const partyMembers = createBattlePartyData(slot);
+
   battleState.menu = BATTLE_MENUS.ROOT;
   battleState.enemyId = enemy.id;
   battleState.enemy = createEnemyForBattle(enemy);
-  battleState.player = createPlayerBattleData(slot);
+  battleState.partyMembers = partyMembers;
+  battleState.player = partyMembers.find((member) => member.id === MAIN_PARTY_MEMBER_ID) || createPlayerBattleData(slot);
   battleState.feedbackKeys = [];
   battleState.resultExpGained = 0;
   battleState.resultLevelUps = 0;
@@ -2923,6 +3012,7 @@ function runFromBattle() {
   battleState.enemyId = null;
   battleState.enemy = null;
   battleState.player = null;
+  battleState.partyMembers = [];
   battleState.feedbackKeys = [];
   battleState.resultExpGained = 0;
   battleState.resultLevelUps = 0;
@@ -2965,6 +3055,7 @@ function clearBattleState() {
   battleState.enemyId = null;
   battleState.enemy = null;
   battleState.player = null;
+  battleState.partyMembers = [];
   battleState.feedbackKeys = [];
   battleState.resultExpGained = 0;
   battleState.resultLevelUps = 0;
