@@ -136,7 +136,6 @@ let activeScreenName = 'language';
 let inventoryTargetMemberId = MAIN_PARTY_MEMBER_ID;
 let debugOverlayVisible = false;
 let lastClickedDestination = null;
-let suppressNextGridClick = false;
 
 let { currentLanguage, currentSlotId, gameMenuStatusKey, showCoordinates, pendingDeleteSlotId, currentMapId } = gameState;
 let enemyStates = gameState.enemyStates;
@@ -2552,8 +2551,7 @@ function renderSaveSlots() {
     currentSlotId,
     getLocale,
     formatText,
-    hasExistingSave,
-    onDeleteRequest: openDeleteConfirmation
+    hasExistingSave
   });
 }
 
@@ -3611,25 +3609,42 @@ function getGridTileCoordinatesFromEvent(event) {
   return { x, y };
 }
 
-gridBoard.addEventListener('click', (event) => {
-  if (suppressNextGridClick) {
-    suppressNextGridClick = false;
-    return;
-  }
+function addUnifiedPressListener(element, onPress) {
+  let suppressNextClick = false;
 
-  handleGridSelection(event);
-});
-gridBoard.addEventListener('pointerup', (event) => {
-  if (event.pointerType === 'mouse') {
-    return;
-  }
+  element.addEventListener('click', (event) => {
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      return;
+    }
 
+    onPress(event);
+  });
+
+  element.addEventListener('pointerup', (event) => {
+    if (event.pointerType === 'mouse') {
+      return;
+    }
+
+    const handled = onPress(event) === true;
+    suppressNextClick = handled;
+
+    if (handled && event.cancelable) {
+      event.preventDefault();
+    }
+  });
+}
+
+function bindButtonPress(element, onPress) {
+  addUnifiedPressListener(element, () => {
+    const handled = onPress();
+    return handled !== false;
+  });
+}
+
+addUnifiedPressListener(gridBoard, (event) => {
   const handledSelection = handleGridSelection(event);
-  suppressNextGridClick = handledSelection;
-
-  if (handledSelection && event.cancelable) {
-    event.preventDefault();
-  }
+  return handledSelection;
 });
 
 document.addEventListener('keydown', (event) => {
@@ -3676,86 +3691,85 @@ document.addEventListener('keydown', (event) => {
 });
 
 languageButtons.forEach((button) => {
-  button.addEventListener('click', () => {
+  bindButtonPress(button, () => {
     setLanguage(button.dataset.language);
     goToMenuScreen();
   });
 });
 
-textNodes.menuBack.addEventListener('click', goToLanguageScreen);
-textNodes.menuPlay.addEventListener('click', goToSaveScreen);
-textNodes.menuMedals.addEventListener('click', goToMedalsScreen);
-textNodes.saveBack.addEventListener('click', goToMenuScreen);
-textNodes.medalsBack.addEventListener('click', goToMenuScreen);
-textNodes.elementBack.addEventListener('click', goToSaveScreen);
-textNodes.classBack.addEventListener('click', () => {
+bindButtonPress(textNodes.menuBack, goToLanguageScreen);
+bindButtonPress(textNodes.menuPlay, goToSaveScreen);
+bindButtonPress(textNodes.menuMedals, goToMedalsScreen);
+bindButtonPress(textNodes.saveBack, goToMenuScreen);
+bindButtonPress(textNodes.medalsBack, goToMenuScreen);
+bindButtonPress(textNodes.elementBack, goToSaveScreen);
+bindButtonPress(textNodes.classBack, () => {
   textNodes.classConfirmation.textContent = '';
   showScreen('element');
 });
-textNodes.openGameMenu.addEventListener('click', openGameMenu);
-textNodes.gmBackToGame.addEventListener('click', goToGameScreen);
-textNodes.gmParty.addEventListener('click', openPartyScreen);
-textNodes.gmInventory.addEventListener('click', openInventoryScreen);
-textNodes.gmInfo.addEventListener('click', openInfoScreen);
-textNodes.gmSettings.addEventListener('click', openSettingsScreen);
-textNodes.gmSave.addEventListener('click', handleSaveOnly);
-textNodes.gmSaveQuit.addEventListener('click', handleSaveAndQuit);
-textNodes.gmQuit.addEventListener('click', handleQuitWithoutSaving);
-textNodes.settingsToggleCoordinates.addEventListener('click', toggleShowCoordinates);
-textNodes.settingsBack.addEventListener('click', returnToGameMenu);
-textNodes.inventoryBack.addEventListener('click', returnToGameMenu);
-textNodes.partyBack.addEventListener('click', returnToGameMenu);
-textNodes.infoBack.addEventListener('click', returnToGameMenu);
-textNodes.deleteConfirmYes.addEventListener('click', confirmDeleteSlot);
-textNodes.deleteConfirmNo.addEventListener('click', cancelDeleteConfirmation);
-textNodes.victoryContinue.addEventListener('click', handleVictoryContinue);
-textNodes.defeatMainMenu.addEventListener('click', handleDefeatReturnToMenu);
-battleOptionsList.addEventListener('click', (event) => {
+bindButtonPress(textNodes.openGameMenu, openGameMenu);
+bindButtonPress(textNodes.gmBackToGame, goToGameScreen);
+bindButtonPress(textNodes.gmParty, openPartyScreen);
+bindButtonPress(textNodes.gmInventory, openInventoryScreen);
+bindButtonPress(textNodes.gmInfo, openInfoScreen);
+bindButtonPress(textNodes.gmSettings, openSettingsScreen);
+bindButtonPress(textNodes.gmSave, handleSaveOnly);
+bindButtonPress(textNodes.gmSaveQuit, handleSaveAndQuit);
+bindButtonPress(textNodes.gmQuit, handleQuitWithoutSaving);
+bindButtonPress(textNodes.settingsToggleCoordinates, toggleShowCoordinates);
+bindButtonPress(textNodes.settingsBack, returnToGameMenu);
+bindButtonPress(textNodes.inventoryBack, returnToGameMenu);
+bindButtonPress(textNodes.partyBack, returnToGameMenu);
+bindButtonPress(textNodes.infoBack, returnToGameMenu);
+bindButtonPress(textNodes.deleteConfirmYes, confirmDeleteSlot);
+bindButtonPress(textNodes.deleteConfirmNo, cancelDeleteConfirmation);
+bindButtonPress(textNodes.victoryContinue, handleVictoryContinue);
+bindButtonPress(textNodes.defeatMainMenu, handleDefeatReturnToMenu);
+addUnifiedPressListener(battleOptionsList, (event) => {
   const button = event.target.closest('button[data-action]');
   if (!button || screens.battle.hidden) {
-    return;
+    return false;
   }
 
   handleBattleAction(button.dataset.action);
+  return true;
 });
 
-saveSlotsList.addEventListener('click', (event) => {
+addUnifiedPressListener(saveSlotsList, (event) => {
   const deleteButton = event.target.closest('.save-slot-delete');
   if (deleteButton) {
-    event.stopPropagation();
-
     if (deleteButton.disabled) {
-      return;
+      return false;
     }
 
     const slotId = Number(deleteButton.dataset.deleteSlotId);
     if (!Number.isInteger(slotId)) {
-      return;
+      return false;
     }
 
     openDeleteConfirmation(slotId);
-    return;
+    return true;
   }
 
   const button = event.target.closest('.save-slot');
   if (!button) {
-    return;
+    return false;
   }
 
   const slotId = Number(button.dataset.slotId);
   if (!Number.isInteger(slotId)) {
-    return;
+    return false;
   }
 
   const slot = getSlotById(slotId);
   if (!slot) {
-    return;
+    return false;
   }
 
   if (!hasExistingSave(slot)) {
     deleteSlotProgress(slotId);
     goToElementScreen(slotId);
-    return;
+    return true;
   }
 
   currentSlotId = slotId;
@@ -3771,12 +3785,13 @@ saveSlotsList.addEventListener('click', (event) => {
   setPlayerPosition(savedPos.x, savedPos.y);
   buildGrid();
   goToGameScreen();
+  return true;
 });
 
 elementButtons.forEach((button) => {
-  button.addEventListener('click', () => {
+  bindButtonPress(button, () => {
     if (!currentSlotId) {
-      return;
+      return false;
     }
 
     updateSlot(currentSlotId, {
@@ -3818,13 +3833,14 @@ elementButtons.forEach((button) => {
       }
     });
     goToClassScreen();
+    return true;
   });
 });
 
 classButtons.forEach((button) => {
-  button.addEventListener('click', () => {
+  bindButtonPress(button, () => {
     if (!currentSlotId) {
-      return;
+      return false;
     }
 
     const slotBeforeClassUpdate = getSlotById(currentSlotId);
@@ -3876,21 +3892,23 @@ classButtons.forEach((button) => {
     renderClassConfirmation();
     renderSaveSlots();
     goToGameScreen();
+    return true;
   });
 });
 
-dialogueArea.addEventListener('click', (event) => {
+addUnifiedPressListener(dialogueArea, (event) => {
   if (screens.dialogue.hidden) {
-    return;
+    return false;
   }
 
   const choiceButton = event.target.closest('button[data-choice-id]');
   if (choiceButton) {
     selectDialogueChoice(choiceButton.dataset.choiceId);
-    return;
+    return true;
   }
 
   advanceDialogue();
+  return true;
 });
 
 dialogueArea.addEventListener('keydown', (event) => {
@@ -3907,36 +3925,39 @@ dialogueArea.addEventListener('keydown', (event) => {
   advanceDialogue();
 });
 
-partyActiveList.addEventListener('click', (event) => {
+addUnifiedPressListener(partyActiveList, (event) => {
   const removeButton = event.target.closest('button[data-remove-companion-id]');
   if (!removeButton || screens.party.hidden) {
-    return;
+    return false;
   }
 
   removeCompanionFromActiveParty(removeButton.dataset.removeCompanionId);
+  return true;
 });
 
-partyRecruitedList.addEventListener('click', (event) => {
+addUnifiedPressListener(partyRecruitedList, (event) => {
   const manageButton = event.target.closest('button[data-manage-gear-member-id]');
   if (!manageButton || screens.party.hidden) {
-    return;
+    return false;
   }
 
   inventoryTargetMemberId = manageButton.dataset.manageGearMemberId;
   renderInventoryScreen();
   showScreen('inventory');
+  return true;
 });
 
-inventoryList.addEventListener('click', (event) => {
+addUnifiedPressListener(inventoryList, (event) => {
   const equipButton = event.target.closest('button[data-equip-member-id][data-equip-slot-type]');
   if (!equipButton || screens.inventory.hidden) {
-    return;
+    return false;
   }
 
   const memberId = equipButton.dataset.equipMemberId;
   const slotType = equipButton.dataset.equipSlotType;
   const itemId = equipButton.dataset.unequip ? null : equipButton.dataset.equipItemId;
   handleEquipItem(memberId, slotType, itemId);
+  return true;
 });
 
 

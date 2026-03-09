@@ -1,4 +1,4 @@
-export function renderSaveSlotsUI({ saveSlotsList, slots, currentSlotId, getLocale, formatText, hasExistingSave, onDeleteRequest }) {
+export function renderSaveSlotsUI({ saveSlotsList, slots, currentSlotId, getLocale, formatText, hasExistingSave }) {
   const locale = getLocale();
   saveSlotsList.innerHTML = '';
 
@@ -33,10 +33,6 @@ export function renderSaveSlotsUI({ saveSlotsList, slots, currentSlotId, getLoca
     deleteButton.dataset.deleteSlotId = String(slot.metadata.slotId);
     deleteButton.textContent = locale.deleteSlot;
     deleteButton.disabled = !filledSlot;
-    deleteButton.addEventListener('click', (event) => {
-      event.stopPropagation();
-      onDeleteRequest(slot.metadata.slotId);
-    });
 
     button.append(label, value);
     slotRow.append(button, deleteButton);
