@@ -23,4 +23,14 @@ export const playerState = {
 };
 
 export const dialogueState = { npcId: null, nodeId: null };
-export const battleState = { menu: BATTLE_MENUS.ROOT, enemyId: null, enemy: null, player: null, feedbackKeys: [], resultMessageKey: 'obtainedNothing', resultItemKey: null };
+export const battleState = {
+  menu: BATTLE_MENUS.ROOT,
+  enemyId: null,
+  enemy: null,
+  player: null,
+  feedbackKeys: [],
+  resultMessageKey: 'obtainedNothing',
+  resultItemKey: null,
+  resultExpGained: 0,
+  resultLevelUps: 0
+};
