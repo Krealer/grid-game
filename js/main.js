@@ -135,6 +135,7 @@ const debugOverlay = document.getElementById('debug-overlay');
 let activeScreenName = 'language';
 let debugOverlayVisible = false;
 let lastClickedDestination = null;
+let suppressNextGridClick = false;
 
 let { currentLanguage, currentSlotId, gameMenuStatusKey, showCoordinates, pendingDeleteSlotId, currentMapId } = gameState;
 let enemyStates = gameState.enemyStates;
@@ -3374,12 +3375,21 @@ function handleGridSelection(event) {
   moveToTile(x, y);
 }
 
-gridBoard.addEventListener('click', handleGridSelection);
+gridBoard.addEventListener('click', (event) => {
+  if (suppressNextGridClick) {
+    suppressNextGridClick = false;
+    return;
+  }
+
+  handleGridSelection(event);
+});
 gridBoard.addEventListener('pointerup', (event) => {
   if (event.pointerType === 'mouse') {
     return;
   }
 
+  suppressNextGridClick = true;
+  event.preventDefault();
   handleGridSelection(event);
 });
 
@@ -3415,7 +3425,8 @@ document.addEventListener('keydown', (event) => {
     d: { x: 1, y: 0 }
   };
 
-  const direction = keyToDirection[event.key];
+  const normalizedKey = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+  const direction = keyToDirection[normalizedKey];
   if (!direction) {
     return;
   }
