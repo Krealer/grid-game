@@ -1,7 +1,7 @@
 import { GRID_SIZE, TILE_STEP_DURATION, SAVE_SCHEMA_VERSION, DEFAULT_MAP_ID, STABLE_ID_PATTERNS, STARTER_REQUIRED_SLIME_IDS, STARTER_DOOR_EVENT_FLAG, STARTER_DOOR, SECOND_MAP_ID, SECOND_MAP_ENTRY, MAIN_PARTY_MEMBER_ID, MAX_ACTIVE_PARTY_SIZE, STORAGE_LANGUAGE_KEY, STORAGE_SAVE_KEY, SLOT_COUNT, BATTLE_MENUS, ELEMENTAL_ADVANTAGE } from './utils/constants.js';
 import { MAP_DEFINITIONS, SECOND_MAP_HEALING_TILES } from './data/maps.js';
 import { STARTER_ENEMY_STARTS, SECOND_MAP_ENEMY_STARTS, ENEMY_SPECIES_DEFINITIONS } from './data/enemies.js';
-import { COMPANION_DEFINITIONS, PLAYER_CLASS_STATS } from './data/characters.js';
+import { COMPANION_DEFINITIONS, PLAYER_CLASS_STATS, LEVEL_GROWTH_BY_CLASS } from './data/characters.js';
 import { DIALOGUE_DEFINITIONS_BY_NPC_ID } from './data/dialogue.js';
 import { translations } from './data/localization.js';
 import { SKILL_DEFINITIONS } from './data/skills.js';
@@ -194,7 +194,8 @@ function createEnemyState(enemyTemplate, occupiedKeys, mapId = currentMapId) {
     hp: speciesDefinition.hp,
     attack: speciesDefinition.attack,
     drops: { ...speciesDefinition.drops },
-    skills: speciesDefinition.skills.map((skill) => ({ ...skill }))
+    skills: speciesDefinition.skills.map((skill) => ({ ...skill })),
+    expReward: Number.isFinite(enemyTemplate.expReward) ? Math.max(0, Math.floor(enemyTemplate.expReward)) : 0
   };
 }
 
@@ -331,25 +332,47 @@ function isWalkable(x, y) {
   return isGround(x, y) && !isEnemyTile(x, y) && !isNpcTile(x, y);
 }
 
+function getExpRequirementForLevel(level) {
+  const normalizedLevel = Math.max(1, Math.floor(level));
+  return 10 + ((normalizedLevel - 1) * 5);
+}
+
+function getClassGrowth(className) {
+  return LEVEL_GROWTH_BY_CLASS[className] || LEVEL_GROWTH_BY_CLASS.warrior;
+}
+
 function getMaxHpForClass(className) {
   return getPlayerStatsByClass(className).hp;
 }
 
-function createMainPartyMemberState(className, element, currentHp = null) {
+function getAttackForClass(className) {
+  return getPlayerStatsByClass(className).attack;
+}
+
+function createProgressionMemberState(id, className, element, currentHp = null) {
   const normalizedClass = normalizeStringEnum(className, ['warrior', 'mage'], 'warrior');
   const normalizedElement = normalizeStringEnum(element, ['fire', 'water', 'earth'], 'fire');
   const maxHp = getMaxHpForClass(normalizedClass);
+  const attack = getAttackForClass(normalizedClass);
   const normalizedCurrentHp = Number.isFinite(currentHp)
     ? Math.max(0, Math.min(maxHp, Math.floor(currentHp)))
     : maxHp;
 
   return {
-    id: MAIN_PARTY_MEMBER_ID,
+    id,
     className: normalizedClass,
     element: normalizedElement,
+    level: 1,
+    currentExp: 0,
+    expToNextLevel: getExpRequirementForLevel(1),
     currentHp: normalizedCurrentHp,
-    maxHp
+    maxHp,
+    attack
   };
+}
+
+function createMainPartyMemberState(className, element, currentHp = null) {
+  return createProgressionMemberState(MAIN_PARTY_MEMBER_ID, className, element, currentHp);
 }
 
 function normalizePartyMemberStates(memberStates, playerIdentity) {
@@ -370,15 +393,26 @@ function normalizePartyMemberStates(memberStates, playerIdentity) {
 
     const className = normalizeStringEnum(memberState.className, ['warrior', 'mage'], identityClass);
     const element = normalizeStringEnum(memberState.element, ['fire', 'water', 'earth'], identityElement);
-    const maxHp = Number.isFinite(memberState.maxHp) ? Math.max(1, Math.floor(memberState.maxHp)) : getMaxHpForClass(className);
+    const fallbackState = createProgressionMemberState(memberId, className, element);
+    const level = Number.isFinite(memberState.level) ? Math.max(1, Math.floor(memberState.level)) : fallbackState.level;
+    const currentExp = Number.isFinite(memberState.currentExp) ? Math.max(0, Math.floor(memberState.currentExp)) : fallbackState.currentExp;
+    const expToNextLevel = Number.isFinite(memberState.expToNextLevel)
+      ? Math.max(1, Math.floor(memberState.expToNextLevel))
+      : getExpRequirementForLevel(level);
+    const maxHp = Number.isFinite(memberState.maxHp) ? Math.max(1, Math.floor(memberState.maxHp)) : fallbackState.maxHp;
+    const attack = Number.isFinite(memberState.attack) ? Math.max(1, Math.floor(memberState.attack)) : fallbackState.attack;
     const currentHp = Number.isFinite(memberState.currentHp) ? Math.max(0, Math.min(maxHp, Math.floor(memberState.currentHp))) : maxHp;
 
     result[memberId] = {
       id: memberId,
       className,
       element,
+      level,
+      currentExp,
+      expToNextLevel,
       currentHp,
-      maxHp
+      maxHp,
+      attack
     };
 
     return result;
@@ -390,9 +424,7 @@ function normalizePartyMemberStates(memberStates, playerIdentity) {
       ...mainState,
       id: MAIN_PARTY_MEMBER_ID,
       className: identityClass,
-      element: identityElement,
-      maxHp: getMaxHpForClass(identityClass),
-      currentHp: Math.max(0, Math.min(getMaxHpForClass(identityClass), mainState.currentHp))
+      element: identityElement
     }
     : defaultMainState;
 
@@ -961,6 +993,8 @@ function renderInfoDetails() {
     return;
   }
 
+  const mainMember = getMainPartyMemberState(slot);
+
   const lines = [
     formatText(locale.infoSlot, { slot: slot.metadata.slotId }),
     formatText(locale.infoElement, {
@@ -969,6 +1003,10 @@ function renderInfoDetails() {
     formatText(locale.infoClass, {
       className: slot.playerIdentity?.chosenClass ? locale[slot.playerIdentity.chosenClass] : locale.infoNone
     }),
+    `${locale.levelLabel}: ${mainMember.level}`,
+    `${locale.expLabel}: ${mainMember.currentExp} / ${mainMember.expToNextLevel}`,
+    `${locale.hp}: ${mainMember.currentHp} / ${mainMember.maxHp}`,
+    `${locale.attack}: ${mainMember.attack}`,
     formatText(locale.infoCoordinates, { x: currentPos.x, y: currentPos.y })
   ];
 
@@ -1342,7 +1380,8 @@ function createEnemyForBattle(enemy) {
     hp: enemy.hp,
     attack: enemy.attack,
     drops: { ...enemy.drops },
-    skills: enemy.skills.map((skill) => ({ ...skill }))
+    skills: enemy.skills.map((skill) => ({ ...skill })),
+    expReward: enemy.expReward || 0
   };
 }
 
@@ -1365,14 +1404,16 @@ function createPlayerBattleData(slot) {
   const mainMember = getMainPartyMemberState(slot);
   const chosenClass = mainMember.className || slot.playerIdentity?.chosenClass || 'warrior';
   const chosenElement = mainMember.element || slot.playerIdentity?.chosenElement || 'fire';
-  const stats = getPlayerStatsByClass(chosenClass);
 
   return {
     class: chosenClass,
     element: chosenElement,
-    maxHp: stats.hp,
-    hp: Math.max(0, Math.min(stats.hp, mainMember.currentHp)),
-    attack: stats.attack,
+    level: mainMember.level,
+    currentExp: mainMember.currentExp,
+    expToNextLevel: mainMember.expToNextLevel,
+    maxHp: mainMember.maxHp,
+    hp: Math.max(0, Math.min(mainMember.maxHp, mainMember.currentHp)),
+    attack: mainMember.attack,
     skills: getPlayerOffensiveSkills(chosenClass, chosenElement)
   };
 }
@@ -1398,6 +1439,63 @@ function updateMainPartyMemberHp(slotId, currentHp) {
       }
     }
   });
+}
+
+function applyExperienceGain(memberState, expAmount) {
+  const gainedExp = Math.max(0, Math.floor(expAmount));
+  if (!gainedExp) {
+    return { updatedState: memberState, levelsGained: 0 };
+  }
+
+  const updatedState = {
+    ...memberState,
+    currentExp: memberState.currentExp + gainedExp
+  };
+  let levelsGained = 0;
+
+  while (updatedState.currentExp >= updatedState.expToNextLevel) {
+    updatedState.currentExp -= updatedState.expToNextLevel;
+    updatedState.level += 1;
+    levelsGained += 1;
+
+    const growth = getClassGrowth(updatedState.className);
+    updatedState.maxHp += growth.hp;
+    updatedState.currentHp = Math.min(updatedState.maxHp, updatedState.currentHp + growth.hp);
+    updatedState.attack += growth.attack;
+    updatedState.expToNextLevel = getExpRequirementForLevel(updatedState.level);
+  }
+
+  return { updatedState, levelsGained };
+}
+
+function grantBattleExpToMainPlayer(slotId, expAmount) {
+  const slot = getSlotById(slotId);
+  if (!slot) {
+    return { gainedExp: 0, levelsGained: 0, memberState: null };
+  }
+
+  const memberStates = normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity);
+  const currentMainState = memberStates[MAIN_PARTY_MEMBER_ID];
+  if (!currentMainState) {
+    return { gainedExp: 0, levelsGained: 0, memberState: null };
+  }
+
+  const gainedExp = Math.max(0, Math.floor(expAmount));
+  const progressionResult = applyExperienceGain(currentMainState, gainedExp);
+  memberStates[MAIN_PARTY_MEMBER_ID] = progressionResult.updatedState;
+
+  updateSlot(slotId, {
+    party: {
+      activePartyMemberIds: slot.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID],
+      memberStates
+    }
+  });
+
+  return {
+    gainedExp,
+    levelsGained: progressionResult.levelsGained,
+    memberState: progressionResult.updatedState
+  };
 }
 
 function healActivePartyToFull(slotId) {
@@ -1514,7 +1612,14 @@ function endBattleVictory() {
     enemyStates = enemyStates.filter((enemy) => enemy.id !== battleState.enemyId);
   }
 
+  battleState.resultExpGained = battleState.enemy?.expReward || 0;
+  battleState.resultLevelUps = 0;
+
   if (currentSlotId) {
+    const progressionResult = grantBattleExpToMainPlayer(currentSlotId, battleState.resultExpGained);
+    battleState.resultExpGained = progressionResult.gainedExp;
+    battleState.resultLevelUps = progressionResult.levelsGained;
+
     const defeatedEnemyIds = getDefeatedEnemyIdsFromCurrentState();
     synchronizeStarterDoorProgress(currentSlotId, defeatedEnemyIds);
     const newlyUnlockedFirstEnemyMedal = unlockMedal(currentSlotId, 'medal_first_enemy');
@@ -1736,16 +1841,25 @@ function renderBattleUI() {
 
 function renderVictoryScreen() {
   const locale = getLocale();
+  const lines = [];
 
   textNodes.victoryTitle.textContent = locale.battleResultVictory;
 
   if (battleState.resultMessageKey === 'obtainedItem' && battleState.resultItemKey) {
-    textNodes.victoryMessage.textContent = formatText(locale.obtainedItem, {
+    lines.push(formatText(locale.obtainedItem, {
       item: locale[battleState.resultItemKey] || battleState.resultItemKey
-    });
+    }));
   } else {
-    textNodes.victoryMessage.textContent = locale.obtainedNothing;
+    lines.push(locale.obtainedNothing);
   }
+
+  lines.push(formatText(locale.gainedExp, { amount: battleState.resultExpGained || 0 }));
+
+  if (battleState.resultLevelUps > 0) {
+    lines.push(locale.levelUp);
+  }
+
+  textNodes.victoryMessage.textContent = lines.join('\n');
 
   textNodes.victoryContinue.textContent = locale.continueToGrid;
 }
@@ -2422,6 +2536,8 @@ function enterBattleMode(enemy) {
   battleState.enemy = createEnemyForBattle(enemy);
   battleState.player = createPlayerBattleData(slot);
   battleState.feedbackKeys = [];
+  battleState.resultExpGained = 0;
+  battleState.resultLevelUps = 0;
 
   renderBattleUI();
   showScreen('battle');
@@ -2479,6 +2595,8 @@ function runFromBattle() {
   battleState.enemy = null;
   battleState.player = null;
   battleState.feedbackKeys = [];
+  battleState.resultExpGained = 0;
+  battleState.resultLevelUps = 0;
   renderBattleUI();
   goToGameScreen();
 }
@@ -2519,6 +2637,8 @@ function clearBattleState() {
   battleState.enemy = null;
   battleState.player = null;
   battleState.feedbackKeys = [];
+  battleState.resultExpGained = 0;
+  battleState.resultLevelUps = 0;
 }
 
 function handleVictoryContinue() {

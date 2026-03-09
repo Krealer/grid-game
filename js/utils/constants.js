@@ -1,7 +1,7 @@
 export const GRID_SIZE = 12;
 export const TILE_SPEED_PER_SECOND = 2;
 export const TILE_STEP_DURATION = 1 / TILE_SPEED_PER_SECOND;
-export const SAVE_SCHEMA_VERSION = 2;
+export const SAVE_SCHEMA_VERSION = 3;
 export const DEFAULT_MAP_ID = 'map_starter_field';
 export const STABLE_ID_PATTERNS = {
   map: /^map_[a-z0-9]+(?:_[a-z0-9]+)*$/,

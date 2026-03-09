@@ -4,7 +4,7 @@ This document defines the **canonical save schema** for this project.
 
 - Storage key: `gridGameSaveSlots`
 - Format: JSON array with 3 slot objects
-- Version: `2`
+- Version: `3`
 
 ## Canonical save slot object
 
@@ -14,7 +14,7 @@ This document defines the **canonical save schema** for this project.
     "slotId": 1,
     "createdAt": "2026-01-01T00:00:00.000Z",
     "updatedAt": "2026-01-01T00:00:00.000Z",
-    "version": 2
+    "version": 3
   },
   "playerIdentity": {
     "chosenClass": "warrior",
@@ -56,8 +56,12 @@ This document defines the **canonical save schema** for this project.
         "id": "main_player",
         "className": "warrior",
         "element": "fire",
+        "level": 1,
+        "currentExp": 0,
+        "expToNextLevel": 10,
         "currentHp": 40,
-        "maxHp": 40
+        "maxHp": 40,
+        "attack": 5
       }
     }
   },
@@ -100,7 +104,11 @@ This document defines the **canonical save schema** for this project.
     - `className`: class key (`warrior` or `mage` for now).
     - `element`: element key (`fire`, `water`, `earth`).
     - `currentHp`: persistent current HP used when entering battle.
+    - `level`: persistent level for long-term progression.
+    - `currentExp`: current accumulated EXP toward the next level.
+    - `expToNextLevel`: required EXP to reach the next level.
     - `maxHp`: persistent max HP for healing and future party logic.
+    - `attack`: persistent attack stat that scales on level-up.
 - `inventory`: future inventory/gear foundations.
 
 ## Stable ID conventions
