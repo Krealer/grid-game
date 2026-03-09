@@ -12,6 +12,23 @@ const SECOND_MAP_LAYOUT = [
 ];
 
 export const MAP_DEFINITIONS = {
-  [DEFAULT_MAP_ID]: { id: DEFAULT_MAP_ID, layout: STARTER_MAP_LAYOUT, spawn: { x: 0, y: 0 }, enemies: STARTER_ENEMY_STARTS, npcs: [STARTER_NPC_TEMPLATE], doors: [STARTER_DOOR] },
-  [SECOND_MAP_ID]: { id: SECOND_MAP_ID, layout: SECOND_MAP_LAYOUT, spawn: SECOND_MAP_ENTRY, enemies: SECOND_MAP_ENEMY_STARTS, npcs: [RECRUITABLE_NPC_TEMPLATE], doors: [], healingTiles: SECOND_MAP_HEALING_TILES }
+  [DEFAULT_MAP_ID]: {
+    id: DEFAULT_MAP_ID,
+    metadata: { nameKey: 'starterMapName', zoneType: 'starter' },
+    layout: STARTER_MAP_LAYOUT,
+    spawn: { x: 0, y: 0 },
+    enemies: STARTER_ENEMY_STARTS,
+    npcs: [STARTER_NPC_TEMPLATE],
+    doors: [STARTER_DOOR]
+  },
+  [SECOND_MAP_ID]: {
+    id: SECOND_MAP_ID,
+    metadata: { nameKey: 'secondMapName', zoneType: 'field' },
+    layout: SECOND_MAP_LAYOUT,
+    spawn: SECOND_MAP_ENTRY,
+    enemies: SECOND_MAP_ENEMY_STARTS,
+    npcs: [RECRUITABLE_NPC_TEMPLATE],
+    doors: [],
+    healingTiles: SECOND_MAP_HEALING_TILES
+  }
 };

@@ -16,12 +16,15 @@ Static game definitions.
 - `enemies.js`: Enemy templates and per-map enemy seeds.
 - `skills.js`: Canonical skill definitions and ids.
 - `dialogue.js`: Dialogue nodes, choice flow, recruit foundations.
+- `npcs.js`: Centralized NPC templates/index.
+- `items.js`: Stable item/key catalog foundations.
+- `medals.js`: Medal catalog foundations.
 - `localization.js`: Translations for all supported languages.
 
 ### `js/state/`
 Mutable runtime and persistence helpers.
 - `gameState.js`: Runtime state containers for active session.
-- `saveSystem.js`: Storage utility wrappers.
+- `saveSystem.js`: Storage read/write helpers and save schema ownership point.
 - `settingsState.js`: Runtime settings state foundation.
 
 ### `js/systems/`
@@ -30,11 +33,15 @@ Gameplay systems namespace for future growth.
 
 ### `js/ui/`
 UI/screen modules namespace for future extraction.
-- `screenRouter.js`, `menuUI.js`, `saveSlotsUI.js`, `battleUI.js`, `dialogueUI.js`, `partyUI.js`, `settingsUI.js`.
+- `screenRouter.js`: Screen switching helper.
+- `saveSlotsUI.js`: Save slot list rendering helper.
+- `menuUI.js`, `battleUI.js`, `dialogueUI.js`, `partyUI.js`, `settingsUI.js`: dedicated UI module anchors for ongoing extraction.
 
 ### `js/utils/`
 Cross-cutting constants/helpers.
 - `constants.js`: Stable ids, schema constants, and shared enums.
+- `helpers.js`: Reusable formatting/helpers.
+- `ids.js`: Grouped stable identifier namespaces.
 
 ## Guidance for future tasks
 - Add new static content in `js/data/*`.
