@@ -20,11 +20,97 @@ const ENEMY_STARTS = [
 
 const NPC_TEMPLATE = { id: 'npc_starter_guide', type: 'npc', x: 11, y: 11, nameKey: 'npcGuide' };
 
-const DIALOGUE_LINES = [
-  { speaker: 'npc', textKey: 'npcGreeting' },
-  { speaker: 'player', textKey: 'playerReply' },
-  { speaker: 'npc', textKey: 'npcFarewell' }
-];
+const STARTER_GUIDE_DIALOGUE_NODES = {
+  intro_question: {
+    id: 'intro_question',
+    speaker: 'npc',
+    textKey: 'npcStoryQuestion',
+    choices: [
+      {
+        id: 'with_story',
+        textKey: 'dialogueChoiceWithStory',
+        nextNodeId: 'story_selected',
+        effects: {
+          setStoryModeChoice: 'story',
+          grantKeyId: 'key_story',
+          removeKeyIds: ['key_no_story'],
+          npcFlags: {
+            npc_starter_guide_intro_seen: true,
+            npc_starter_guide_story_choice_made: true
+          },
+          eventFlags: {
+            event_starter_guide_story_choice_made: true
+          }
+        }
+      },
+      {
+        id: 'without_story',
+        textKey: 'dialogueChoiceWithoutStory',
+        nextNodeId: 'no_story_selected',
+        effects: {
+          setStoryModeChoice: 'no_story',
+          grantKeyId: 'key_no_story',
+          removeKeyIds: ['key_story'],
+          npcFlags: {
+            npc_starter_guide_intro_seen: true,
+            npc_starter_guide_story_choice_made: true
+          },
+          eventFlags: {
+            event_starter_guide_story_choice_made: true
+          }
+        }
+      }
+    ]
+  },
+  story_selected: {
+    id: 'story_selected',
+    speaker: 'npc',
+    textKey: 'npcStoryChoiceAccepted',
+    nextNodeId: null,
+    effects: {
+      npcFlags: {
+        npc_starter_guide_followup_seen: true
+      }
+    }
+  },
+  no_story_selected: {
+    id: 'no_story_selected',
+    speaker: 'npc',
+    textKey: 'npcNoStoryChoiceAccepted',
+    nextNodeId: null,
+    effects: {
+      npcFlags: {
+        npc_starter_guide_followup_seen: true
+      }
+    }
+  },
+  followup_story: {
+    id: 'followup_story',
+    speaker: 'npc',
+    textKey: 'npcStoryModeFollowup',
+    nextNodeId: null,
+    conditions: {
+      storyModeChoice: 'story'
+    }
+  },
+  followup_no_story: {
+    id: 'followup_no_story',
+    speaker: 'npc',
+    textKey: 'npcNoStoryModeFollowup',
+    nextNodeId: null,
+    conditions: {
+      storyModeChoice: 'no_story'
+    }
+  }
+};
+
+const STARTER_GUIDE_DIALOGUE_FLOW = {
+  entryNodeId: 'intro_question',
+  repeatNodeByStoryChoice: {
+    story: 'followup_story',
+    no_story: 'followup_no_story'
+  }
+};
 
 const MAP_LAYOUT = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -99,6 +185,7 @@ const textNodes = {
   dialogueTitle: document.getElementById('dialogue-title'),
   dialogueSpeaker: document.getElementById('dialogue-speaker'),
   dialogueLine: document.getElementById('dialogue-line'),
+  dialogueChoices: document.getElementById('dialogue-choices'),
   dialogueHelper: document.getElementById('dialogue-helper'),
   victoryTitle: document.getElementById('victory-title'),
   victoryMessage: document.getElementById('victory-message'),
@@ -187,8 +274,7 @@ npcState = createNpcState(enemyStates);
 
 const dialogueState = {
   npcId: null,
-  lines: [],
-  index: 0
+  nodeId: null
 };
 
 const battleState = {
@@ -298,10 +384,15 @@ const translations = {
     npcGuide: 'Village Guide',
     dialogueTitle: 'Dialogue',
     dialogueTapToContinue: 'Tap or click to continue.',
+    dialogueSelectAnswer: 'Choose one answer.',
     dialoguePlayerLabel: 'You',
-    npcGreeting: 'Welcome, traveler. The paths ahead can be dangerous.',
-    playerReply: 'Thanks. I will stay alert and keep moving.',
-    npcFarewell: 'Good luck out there. Come back if you need guidance.',
+    npcStoryQuestion: 'Do you want to go on an adventure with the story?',
+    dialogueChoiceWithStory: 'With the story',
+    dialogueChoiceWithoutStory: 'Without the story',
+    npcStoryChoiceAccepted: 'Great. I will guide you through the story path. Take this story key.',
+    npcNoStoryChoiceAccepted: 'Understood. You can travel freely without story guidance. Take this no-story key.',
+    npcStoryModeFollowup: 'Your story path is set. The story key will open your way later.',
+    npcNoStoryModeFollowup: 'Your free path is set. The no-story key marks your route.',
     dir: 'ltr'
   },
   ja: {
@@ -389,10 +480,15 @@ const translations = {
     npcGuide: '村の案内人',
     dialogueTitle: '会話',
     dialogueTapToContinue: 'タップまたはクリックで続行します。',
+    dialogueSelectAnswer: '回答を1つ選んでください。',
     dialoguePlayerLabel: 'あなた',
-    npcGreeting: 'ようこそ旅人さん。この先の道は危険です。',
-    playerReply: 'ありがとう。気をつけて進みます。',
-    npcFarewell: '幸運を。案内が必要ならまた来てください。',
+    npcStoryQuestion: '物語ありで冒険に出ますか？',
+    dialogueChoiceWithStory: '物語ありで進む',
+    dialogueChoiceWithoutStory: '物語なしで進む',
+    npcStoryChoiceAccepted: 'いい選択です。物語ルートを案内します。ストーリーキーを受け取ってください。',
+    npcNoStoryChoiceAccepted: 'わかりました。物語案内なしで自由に進めます。ノーストーリーキーを受け取ってください。',
+    npcStoryModeFollowup: '物語ルートは確定しています。ストーリーキーはこの先で役立ちます。',
+    npcNoStoryModeFollowup: '自由ルートは確定しています。ノーストーリーキーがあなたの道しるべです。',
     dir: 'ltr'
   },
   ru: {
@@ -480,10 +576,15 @@ const translations = {
     npcGuide: 'Проводник деревни',
     dialogueTitle: 'Диалог',
     dialogueTapToContinue: 'Нажмите или коснитесь, чтобы продолжить.',
+    dialogueSelectAnswer: 'Выберите один ответ.',
     dialoguePlayerLabel: 'Вы',
-    npcGreeting: 'Добро пожаловать, путник. Дороги впереди могут быть опасны.',
-    playerReply: 'Спасибо. Я буду осторожен и продолжу путь.',
-    npcFarewell: 'Удачи. Возвращайтесь, если понадобится совет.',
+    npcStoryQuestion: 'Ты хочешь отправиться в приключение с сюжетом?',
+    dialogueChoiceWithStory: 'С сюжетом',
+    dialogueChoiceWithoutStory: 'Без сюжета',
+    npcStoryChoiceAccepted: 'Отлично. Я направлю тебя по сюжетному пути. Возьми сюжетный ключ.',
+    npcNoStoryChoiceAccepted: 'Понял. Можешь идти свободно без сюжетного пути. Возьми ключ без сюжета.',
+    npcStoryModeFollowup: 'Твой сюжетный путь уже выбран. Сюжетный ключ пригодится дальше.',
+    npcNoStoryModeFollowup: 'Твой свободный путь уже выбран. Ключ без сюжета отмечает твой маршрут.',
     dir: 'ltr'
   },
   ar: {
@@ -571,10 +672,15 @@ const translations = {
     npcGuide: 'مرشد القرية',
     dialogueTitle: 'حوار',
     dialogueTapToContinue: 'المس أو انقر للمتابعة.',
+    dialogueSelectAnswer: 'اختر إجابة واحدة.',
     dialoguePlayerLabel: 'أنت',
-    npcGreeting: 'مرحبًا أيها المسافر. الطرق أمامك قد تكون خطيرة.',
-    playerReply: 'شكرًا لك. سأبقى منتبهًا وأتابع التقدم.',
-    npcFarewell: 'حظًا موفقًا. عُد إذا احتجت إلى إرشاد.',
+    npcStoryQuestion: 'هل تريد أن تنطلق في مغامرة مع القصة؟',
+    dialogueChoiceWithStory: 'مع القصة',
+    dialogueChoiceWithoutStory: 'بدون القصة',
+    npcStoryChoiceAccepted: 'ممتاز. سأرشدك عبر مسار القصة. خذ مفتاح القصة.',
+    npcNoStoryChoiceAccepted: 'مفهوم. يمكنك المتابعة بحرية بدون مسار القصة. خذ مفتاح بدون قصة.',
+    npcStoryModeFollowup: 'تم تثبيت مسار القصة الخاص بك. مفتاح القصة سيفتح طريقك لاحقًا.',
+    npcNoStoryModeFollowup: 'تم تثبيت مسارك الحر. مفتاح بدون قصة يحدد طريقك.',
     dir: 'rtl'
   }
 };
@@ -1081,12 +1187,114 @@ function renderInfoDetails() {
 }
 
 
+
+function matchesDialogueConditions(node, slot) {
+  if (!node?.conditions) {
+    return true;
+  }
+
+  if (node.conditions.storyModeChoice && slot?.playerIdentity?.storyModeChoice !== node.conditions.storyModeChoice) {
+    return false;
+  }
+
+  return true;
+}
+
+function getStarterGuideDialogueStartNodeId(slot) {
+  const storyChoiceMade = Boolean(slot?.npcStateFlags?.npc_starter_guide_story_choice_made);
+
+  if (!storyChoiceMade) {
+    return STARTER_GUIDE_DIALOGUE_FLOW.entryNodeId;
+  }
+
+  return STARTER_GUIDE_DIALOGUE_FLOW.repeatNodeByStoryChoice[slot?.playerIdentity?.storyModeChoice] || 'followup_story';
+}
+
+function getCurrentDialogueNode() {
+  if (!dialogueState.nodeId) {
+    return null;
+  }
+
+  return STARTER_GUIDE_DIALOGUE_NODES[dialogueState.nodeId] || null;
+}
+
+function applyDialogueEffects(effects) {
+  if (!effects || !currentSlotId) {
+    return;
+  }
+
+  const slot = getSlotById(currentSlotId);
+  if (!slot) {
+    return;
+  }
+
+  const keyIds = new Set(slot.worldProgress?.obtainedKeyIds || []);
+
+  if (Array.isArray(effects.removeKeyIds)) {
+    effects.removeKeyIds.forEach((keyId) => keyIds.delete(keyId));
+  }
+
+  if (effects.grantKeyId) {
+    keyIds.add(effects.grantKeyId);
+  }
+
+  updateSlot(currentSlotId, {
+    playerIdentity: {
+      storyModeChoice: effects.setStoryModeChoice || slot.playerIdentity.storyModeChoice
+    },
+    worldProgress: {
+      obtainedKeyIds: [...keyIds],
+      triggeredEventFlags: {
+        ...(slot.worldProgress?.triggeredEventFlags || {}),
+        ...(effects.eventFlags || {})
+      }
+    },
+    npcStateFlags: {
+      ...(slot.npcStateFlags || {}),
+      ...(effects.npcFlags || {})
+    }
+  });
+}
+
+function completeDialogueAndReturnToMap() {
+  dialogueState.npcId = null;
+  dialogueState.nodeId = null;
+  renderGameplayInfo();
+  showScreen('game');
+}
+
+function selectDialogueChoice(choiceId) {
+  const node = getCurrentDialogueNode();
+  if (!node || !Array.isArray(node.choices)) {
+    return;
+  }
+
+  const choice = node.choices.find((entry) => entry.id === choiceId);
+  if (!choice) {
+    return;
+  }
+
+  applyDialogueEffects(choice.effects);
+  dialogueState.nodeId = choice.nextNodeId || null;
+
+  const nextNode = getCurrentDialogueNode();
+  if (!nextNode) {
+    completeDialogueAndReturnToMap();
+    return;
+  }
+
+  applyDialogueEffects(nextNode.effects);
+  renderDialogueUI();
+}
+
 function renderDialogueUI() {
   const locale = getLocale();
-  const line = dialogueState.lines[dialogueState.index];
+  const line = getCurrentDialogueNode();
 
   textNodes.dialogueTitle.textContent = locale.dialogueTitle;
-  textNodes.dialogueHelper.textContent = locale.dialogueTapToContinue;
+  textNodes.dialogueHelper.textContent = line?.choices?.length ? locale.dialogueSelectAnswer : locale.dialogueTapToContinue;
+
+  textNodes.dialogueChoices.innerHTML = '';
 
   if (!line) {
     textNodes.dialogueSpeaker.textContent = '';
@@ -1106,16 +1314,36 @@ function renderDialogueUI() {
   const playerClassName = slot?.playerIdentity?.chosenClass || 'warrior';
   dialoguePlayerAvatar.classList.remove('portrait--warrior', 'portrait--mage');
   dialoguePlayerAvatar.classList.add(`portrait--${playerClassName}`);
+
+  if (Array.isArray(line.choices)) {
+    line.choices.forEach((choice) => {
+      const item = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'menu-option dialogue-choice';
+      button.dataset.choiceId = choice.id;
+      button.textContent = locale[choice.textKey] || choice.textKey;
+      item.append(button);
+      textNodes.dialogueChoices.append(item);
+    });
+  }
 }
 
 function enterDialogueMode(npc) {
-  if (!npc) {
+  if (!npc || npc.id !== 'npc_starter_guide' || !currentSlotId) {
+    return;
+  }
+
+  const slot = getSlotById(currentSlotId);
+  const startNodeId = getStarterGuideDialogueStartNodeId(slot);
+  const startNode = STARTER_GUIDE_DIALOGUE_NODES[startNodeId];
+
+  if (!startNode || !matchesDialogueConditions(startNode, slot)) {
     return;
   }
 
   dialogueState.npcId = npc.id;
-  dialogueState.lines = DIALOGUE_LINES;
-  dialogueState.index = 0;
+  dialogueState.nodeId = startNodeId;
   renderDialogueUI();
   showScreen('dialogue');
 }
@@ -1125,16 +1353,25 @@ function advanceDialogue() {
     return;
   }
 
-  dialogueState.index += 1;
-
-  if (dialogueState.index >= dialogueState.lines.length) {
-    dialogueState.npcId = null;
-    dialogueState.lines = [];
-    dialogueState.index = 0;
-    showScreen('game');
+  const node = getCurrentDialogueNode();
+  if (!node || (Array.isArray(node.choices) && node.choices.length > 0)) {
     return;
   }
 
+  if (!node.nextNodeId) {
+    completeDialogueAndReturnToMap();
+    return;
+  }
+
+  dialogueState.nodeId = node.nextNodeId;
+  const nextNode = getCurrentDialogueNode();
+
+  if (!nextNode) {
+    completeDialogueAndReturnToMap();
+    return;
+  }
+
+  applyDialogueEffects(nextNode.effects);
   renderDialogueUI();
 }
 
@@ -1567,6 +1804,7 @@ function renderStaticText() {
   renderBattleUI();
   renderVictoryScreen();
   renderDefeatScreen();
+  renderDialogueUI();
 }
 
 function renderSaveSlots() {
@@ -2147,9 +2385,12 @@ gridBoard.addEventListener('click', (event) => {
 
 document.addEventListener('keydown', (event) => {
   if (!screens.dialogue.hidden && (event.key === 'Enter' || event.key === ' ')) {
-    event.preventDefault();
-    advanceDialogue();
-    return;
+    const node = getCurrentDialogueNode();
+    if (!node?.choices?.length) {
+      event.preventDefault();
+      advanceDialogue();
+      return;
+    }
   }
 
   if (screens.game.hidden) {
@@ -2349,8 +2590,14 @@ classButtons.forEach((button) => {
   });
 });
 
-dialogueArea.addEventListener('click', () => {
+dialogueArea.addEventListener('click', (event) => {
   if (screens.dialogue.hidden) {
+    return;
+  }
+
+  const choiceButton = event.target.closest('button[data-choice-id]');
+  if (choiceButton) {
+    selectDialogueChoice(choiceButton.dataset.choiceId);
     return;
   }
 
@@ -2359,6 +2606,11 @@ dialogueArea.addEventListener('click', () => {
 
 dialogueArea.addEventListener('keydown', (event) => {
   if (event.key !== 'Enter' && event.key !== ' ') {
+    return;
+  }
+
+  const node = getCurrentDialogueNode();
+  if (node?.choices?.length) {
     return;
   }
 
