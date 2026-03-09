@@ -3563,24 +3563,25 @@ function animationStep(timestamp) {
 
 function handleGridSelection(event) {
   if (screens.game.hidden) {
-    return;
+    return false;
   }
 
   const tileCoordinates = getGridTileCoordinatesFromEvent(event);
   if (!tileCoordinates) {
-    return;
+    return false;
   }
 
   const { x, y } = tileCoordinates;
   if (!Number.isInteger(x) || !Number.isInteger(y)) {
-    return;
+    return false;
   }
 
   if (tryInteractWithEntity(x, y)) {
-    return;
+    return true;
   }
 
   moveToTile(x, y);
+  return true;
 }
 
 function getGridTileCoordinatesFromEvent(event) {
@@ -3623,9 +3624,12 @@ gridBoard.addEventListener('pointerup', (event) => {
     return;
   }
 
-  suppressNextGridClick = true;
-  event.preventDefault();
-  handleGridSelection(event);
+  const handledSelection = handleGridSelection(event);
+  suppressNextGridClick = handledSelection;
+
+  if (handledSelection && event.cancelable) {
+    event.preventDefault();
+  }
 });
 
 document.addEventListener('keydown', (event) => {
