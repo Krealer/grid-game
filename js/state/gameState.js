@@ -39,5 +39,6 @@ export const battleState = {
   resultMessageKey: 'obtainedNothing',
   resultItemKey: null,
   resultExpGained: 0,
-  resultLevelUps: 0
+  resultLevelUps: 0,
+  resultPartyProgress: []
 };
