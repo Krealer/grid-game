@@ -130,8 +130,11 @@ const partyActiveList = document.getElementById('party-active-list');
 const partyRecruitedList = document.getElementById('party-recruited-list');
 const inventoryList = document.getElementById('inventory-list');
 const medalsList = document.getElementById('medals-list');
+const debugOverlay = document.getElementById('debug-overlay');
 
-
+let activeScreenName = 'language';
+let debugOverlayVisible = false;
+let lastClickedDestination = null;
 
 let { currentLanguage, currentSlotId, gameMenuStatusKey, showCoordinates, pendingDeleteSlotId, currentMapId } = gameState;
 let enemyStates = gameState.enemyStates;
@@ -2379,7 +2382,85 @@ function renderClassConfirmation() {
   textNodes.classConfirmation.textContent = formatText(locale.classSaved, { number: slot.metadata.slotId });
 }
 
-const { showScreen } = createScreenRouter(screens);
+const screenRouter = createScreenRouter(screens);
+
+function formatDebugValue(value, fallback = 'none') {
+  if (value === null || value === undefined || value === '') {
+    return fallback;
+  }
+
+  return String(value);
+}
+
+function getCurrentSlot() {
+  return currentSlotId ? getSlotById(currentSlotId) : null;
+}
+
+function getPlayerGearSummary(slot) {
+  if (!slot) {
+    return 'none';
+  }
+
+  const equippedGear = slot.inventory?.equippedGear || {};
+  const summary = EQUIPMENT_SLOT_ORDER
+    .map((slotType) => {
+      const itemId = equippedGear[slotType];
+      const item = itemId ? GEAR_ITEM_DEFINITIONS[itemId] : null;
+      return `${slotType}:${item ? itemId : 'none'}`;
+    })
+    .join(', ');
+
+  return summary || 'none';
+}
+
+function renderDebugOverlay() {
+  if (!debugOverlay) {
+    return;
+  }
+
+  debugOverlay.hidden = !debugOverlayVisible;
+  debugOverlay.setAttribute('aria-hidden', String(!debugOverlayVisible));
+
+  if (!debugOverlayVisible) {
+    debugOverlay.textContent = '';
+    return;
+  }
+
+  const slot = getCurrentSlot();
+  const playerMember = slot ? getMainPartyMemberState(slot) : null;
+  const activePartyIds = slot?.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID];
+  const recruitedIds = slot?.party?.recruitedCompanionIds || [];
+  const destinationFromPath = playerState.path.length > 0 ? playerState.path[playerState.path.length - 1] : null;
+  const destinationTile = playerState.moving
+    ? { x: playerState.stepToX, y: playerState.stepToY }
+    : (destinationFromPath || lastClickedDestination);
+
+  const lines = [
+    'DEBUG OVERLAY (F3 / Shift+D)',
+    `screen: ${formatDebugValue(activeScreenName)}`,
+    `mapId: ${formatDebugValue(currentMapId)}`,
+    `playerTile: ${playerState.tileX},${playerState.tileY}`,
+    `isMoving: ${playerState.moving ? 'yes' : 'no'}`,
+    `targetTile: ${destinationTile ? `${destinationTile.x},${destinationTile.y}` : 'none'}`,
+    `activePartyIds: ${activePartyIds.length ? activePartyIds.join(', ') : 'none'}`,
+    `recruitedCompanionIds: ${recruitedIds.length ? recruitedIds.join(', ') : 'none'}`,
+    `saveSlotId: ${formatDebugValue(currentSlotId)}`,
+    `showCoordinates: ${showCoordinates ? 'on' : 'off'}`,
+    `playerHp: ${playerMember ? `${playerMember.hp}/${playerMember.maxHp}` : 'none'}`,
+    `playerLevelExp: ${playerMember ? `${playerMember.level}/${playerMember.exp}` : 'none'}`,
+    `equippedGear: ${getPlayerGearSummary(slot)}`,
+    `dialogueNpcId: ${formatDebugValue(dialogueState.npcId)}`,
+    `battleEnemyId: ${formatDebugValue(battleState.enemyId)}`
+  ];
+
+  debugOverlay.textContent = lines.join('\n');
+}
+
+function showScreen(screenName) {
+  activeScreenName = screenName;
+  screenRouter.showScreen(screenName);
+  renderDebugOverlay();
+}
 
 function setLanguage(language) {
   if (!translations[language]) {
@@ -2574,6 +2655,7 @@ function tryUseDoor(door) {
 
 function beginNextStep() {
   if (playerState.path.length === 0) {
+    lastClickedDestination = null;
     playerState.moving = false;
     playerState.lastTimestamp = null;
     playerState.stepElapsed = 0;
@@ -3017,6 +3099,8 @@ function moveToTile(targetX, targetY) {
     return;
   }
 
+  lastClickedDestination = { x: targetX, y: targetY };
+
   if (!isWalkable(targetX, targetY)) {
     return;
   }
@@ -3222,6 +3306,7 @@ function animationStep(timestamp) {
   }
 
   syncRuntimeState();
+  renderDebugOverlay();
   requestAnimationFrame(animationStep);
 }
 
@@ -3258,6 +3343,13 @@ gridBoard.addEventListener('pointerup', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
+  if (event.key === 'F3' || (event.key.toLowerCase() === 'd' && event.shiftKey)) {
+    event.preventDefault();
+    debugOverlayVisible = !debugOverlayVisible;
+    renderDebugOverlay();
+    return;
+  }
+
   if (!screens.dialogue.hidden && (event.key === 'Enter' || event.key === ' ')) {
     const node = getCurrentDialogueNode();
     if (!node?.choices?.length) {
@@ -3559,5 +3651,6 @@ buildGrid();
 setDocumentLanguage();
 renderStaticText();
 goToLanguageScreen();
+renderDebugOverlay();
 syncRuntimeState();
 requestAnimationFrame(animationStep);
