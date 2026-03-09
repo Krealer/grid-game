@@ -3521,13 +3521,12 @@ function handleGridSelection(event) {
     return;
   }
 
-  const tile = event.target.closest('.grid-tile');
-  if (!tile) {
+  const tileCoordinates = getGridTileCoordinatesFromEvent(event);
+  if (!tileCoordinates) {
     return;
   }
 
-  const x = Number(tile.dataset.x);
-  const y = Number(tile.dataset.y);
+  const { x, y } = tileCoordinates;
   if (!Number.isInteger(x) || !Number.isInteger(y)) {
     return;
   }
@@ -3537,6 +3536,33 @@ function handleGridSelection(event) {
   }
 
   moveToTile(x, y);
+}
+
+function getGridTileCoordinatesFromEvent(event) {
+  const target = event.target instanceof Element ? event.target : null;
+  const tile = target?.closest('.grid-tile');
+  if (tile) {
+    return {
+      x: Number(tile.dataset.x),
+      y: Number(tile.dataset.y)
+    };
+  }
+
+  if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) {
+    return null;
+  }
+
+  const rect = gridBoard.getBoundingClientRect();
+  const relativeX = event.clientX - rect.left;
+  const relativeY = event.clientY - rect.top;
+
+  if (relativeX < 0 || relativeY < 0 || relativeX >= rect.width || relativeY >= rect.height) {
+    return null;
+  }
+
+  const x = Math.floor((relativeX / rect.width) * GRID_SIZE);
+  const y = Math.floor((relativeY / rect.height) * GRID_SIZE);
+  return { x, y };
 }
 
 gridBoard.addEventListener('click', (event) => {
