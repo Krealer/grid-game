@@ -853,6 +853,35 @@ function normalizeCanonicalSlot(slot, slotId) {
     y: slot?.playerWorldPosition?.playerY
   }, normalizedMapId);
 
+  const normalizedRecruitedCompanionIds = normalizeStableIdArray(slot?.party?.recruitedCompanionIds, STABLE_ID_PATTERNS.companion)
+    .filter((companionId) => Boolean(COMPANION_DEFINITIONS[companionId]));
+  const normalizedActivePartyMemberIds = (() => {
+    const normalized = normalizeStringArray(slot?.party?.activePartyMemberIds);
+    const sanitized = normalized.filter((memberId) => memberId === MAIN_PARTY_MEMBER_ID
+      || (normalizedRecruitedCompanionIds.includes(memberId) && Boolean(COMPANION_DEFINITIONS[memberId])));
+    const ensuredMain = sanitized.includes(MAIN_PARTY_MEMBER_ID)
+      ? sanitized
+      : [MAIN_PARTY_MEMBER_ID, ...sanitized];
+    return [...new Set(ensuredMain)].slice(0, MAX_ACTIVE_PARTY_SIZE);
+  })();
+  const normalizedCompanionWorldStateFlags = (() => {
+    const incomingStates = normalizeCompanionWorldStateFlags(slot?.party?.companionWorldStateFlags);
+    const activeCompanionSet = new Set(normalizedActivePartyMemberIds.filter((memberId) => memberId !== MAIN_PARTY_MEMBER_ID));
+
+    return normalizedRecruitedCompanionIds.reduce((result, companionId) => {
+      if (activeCompanionSet.has(companionId)) {
+        result[companionId] = 'following_player';
+        return result;
+      }
+
+      const priorState = incomingStates[companionId];
+      result[companionId] = priorState === 'at_origin' || priorState === 'at_origin_pending_spawn'
+        ? priorState
+        : 'at_origin_pending_spawn';
+      return result;
+    }, {});
+  })();
+
   const normalizedSlot = {
     metadata: {
       slotId,
@@ -882,16 +911,10 @@ function normalizeCanonicalSlot(slot, slotId) {
     },
     medals: normalizeMedals(slot?.medals),
     party: {
-      activePartyMemberIds: (() => {
-        const normalized = normalizeStringArray(slot?.party?.activePartyMemberIds);
-        const ensuredMain = normalized.includes(MAIN_PARTY_MEMBER_ID)
-          ? normalized
-          : [MAIN_PARTY_MEMBER_ID, ...normalized];
-        return [...new Set(ensuredMain)].slice(0, MAX_ACTIVE_PARTY_SIZE);
-      })(),
-      recruitedCompanionIds: normalizeStableIdArray(slot?.party?.recruitedCompanionIds, STABLE_ID_PATTERNS.companion),
+      activePartyMemberIds: normalizedActivePartyMemberIds,
+      recruitedCompanionIds: normalizedRecruitedCompanionIds,
       memberStates: normalizePartyMemberStates(slot?.party?.memberStates, slot?.playerIdentity),
-      companionWorldStateFlags: normalizeCompanionWorldStateFlags(slot?.party?.companionWorldStateFlags)
+      companionWorldStateFlags: normalizedCompanionWorldStateFlags
     },
     inventory: {
       inventoryItems: normalizeOwnedGearItemIds(normalizeStableIdArray(slot?.inventory?.inventoryItems, STABLE_ID_PATTERNS.item)),
@@ -2446,8 +2469,9 @@ function renderDebugOverlay() {
     `recruitedCompanionIds: ${recruitedIds.length ? recruitedIds.join(', ') : 'none'}`,
     `saveSlotId: ${formatDebugValue(currentSlotId)}`,
     `showCoordinates: ${showCoordinates ? 'on' : 'off'}`,
-    `playerHp: ${playerMember ? `${playerMember.hp}/${playerMember.maxHp}` : 'none'}`,
-    `playerLevelExp: ${playerMember ? `${playerMember.level}/${playerMember.exp}` : 'none'}`,
+    `playerHp: ${playerMember ? `${playerMember.currentHp}/${playerMember.maxHp}` : 'none'}`,
+    `playerLevelExp: ${playerMember ? `${playerMember.level}/${playerMember.currentExp}` : 'none'}`,
+    `companionWorldStateFlags: ${slot?.party?.companionWorldStateFlags ? JSON.stringify(slot.party.companionWorldStateFlags) : 'none'}`,
     `equippedGear: ${getPlayerGearSummary(slot)}`,
     `dialogueNpcId: ${formatDebugValue(dialogueState.npcId)}`,
     `battleEnemyId: ${formatDebugValue(battleState.enemyId)}`
@@ -2544,19 +2568,22 @@ function transitionToMap(mapId, spawnOverride = null) {
 
   const map = getMapDefinition(mapId);
   const spawn = normalizePosition(spawnOverride || map.spawn, map.id);
-  const defeatedEnemyIds = slot.worldProgress?.defeatedEnemyIds || [];
-
-  initializeMapState(map.id, defeatedEnemyIds);
-  setPlayerPosition(spawn.x, spawn.y);
-  buildGrid();
+  const defeatedEnemyIds = getPersistentDefeatedEnemyIds(slot, currentMapId);
 
   updateSlot(currentSlotId, {
     playerWorldPosition: {
       currentMapId: map.id,
       playerX: spawn.x,
       playerY: spawn.y
+    },
+    worldProgress: {
+      defeatedEnemyIds
     }
   });
+
+  initializeMapState(map.id, defeatedEnemyIds);
+  setPlayerPosition(spawn.x, spawn.y);
+  buildGrid();
 
   renderGameplayInfo();
   renderInfoDetails();
@@ -2766,11 +2793,25 @@ function writeCurrentGameToSlot() {
 }
 
 function getDefeatedEnemyIdsFromCurrentState() {
-  const mapEnemyTemplates = getCurrentMapDefinition().enemies || [];
+  return getPersistentDefeatedEnemyIds(getCurrentSlot(), currentMapId);
+}
 
-  return mapEnemyTemplates
-    .filter((enemyStart) => !enemyStates.some((enemy) => enemy.id === enemyStart.id))
-    .map((enemy) => enemy.id);
+function getPersistentDefeatedEnemyIds(slot, mapId = currentMapId) {
+  const currentSlot = slot || getCurrentSlot();
+  if (!currentSlot) {
+    return [];
+  }
+
+  const existingDefeated = new Set(normalizeDefeatedEnemyIds(currentSlot.worldProgress?.defeatedEnemyIds));
+  const mapEnemyIds = new Set((getMapDefinition(mapId).enemies || []).map((enemy) => enemy.id));
+
+  mapEnemyIds.forEach((enemyId) => existingDefeated.delete(enemyId));
+
+  (getMapDefinition(mapId).enemies || [])
+    .filter((enemyTemplate) => !enemyStates.some((enemy) => enemy.id === enemyTemplate.id))
+    .forEach((enemyTemplate) => existingDefeated.add(enemyTemplate.id));
+
+  return [...existingDefeated];
 }
 
 function deleteSlotProgress(slotId) {
