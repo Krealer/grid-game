@@ -7,6 +7,9 @@ import { translations } from './data/localization.js';
 import { SKILL_DEFINITIONS } from './data/skills.js';
 import { loadRawSlots, persistSlots } from './state/saveSystem.js';
 import { gameState, playerState, dialogueState, battleState } from './state/gameState.js';
+import { createScreenRouter } from './ui/screenRouter.js';
+import { renderSaveSlotsUI } from './ui/saveSlotsUI.js';
+import { formatText } from './utils/helpers.js';
 
 const screens = {
   language: document.getElementById('language-screen'),
@@ -120,10 +123,6 @@ gridBoard.append(playerPiece);
 
 enemyStates = createInitialEnemyStates();
 npcStates = createNpcStates(enemyStates);
-
-function formatText(template, values) {
-  return template.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '');
-}
 
 function getLocale() {
   return translations[currentLanguage] || translations.en;
@@ -1678,44 +1677,14 @@ function renderStaticText() {
 }
 
 function renderSaveSlots() {
-  const locale = getLocale();
-  const slots = loadSlots();
-
-  saveSlotsList.innerHTML = '';
-
-  slots.forEach((slot) => {
-    const item = document.createElement('li');
-    const slotRow = document.createElement('div');
-    const button = document.createElement('button');
-    const label = document.createElement('span');
-    const value = document.createElement('span');
-    const deleteButton = document.createElement('button');
-    const filledSlot = hasExistingSave(slot);
-
-    slotRow.className = 'save-slot-row';
-
-    button.type = 'button';
-    button.className = 'save-slot';
-    button.dataset.slotId = String(slot.metadata.slotId);
-
-    label.className = 'slot-name';
-    label.textContent = formatText(locale.slotLabel, { number: slot.metadata.slotId });
-
-    value.className = 'slot-value';
-    value.textContent = filledSlot
-      ? `${locale[slot.playerIdentity.chosenElement]} • ${locale[slot.playerIdentity.chosenClass]}`
-      : locale.newGame;
-
-    deleteButton.type = 'button';
-    deleteButton.className = 'save-slot-delete';
-    deleteButton.dataset.deleteSlotId = String(slot.metadata.slotId);
-    deleteButton.textContent = locale.deleteSlot;
-    deleteButton.disabled = !filledSlot;
-
-    button.append(label, value);
-    slotRow.append(button, deleteButton);
-    item.append(slotRow);
-    saveSlotsList.append(item);
+  renderSaveSlotsUI({
+    saveSlotsList,
+    slots: loadSlots(),
+    currentSlotId,
+    getLocale,
+    formatText,
+    hasExistingSave,
+    onDeleteRequest: openDeleteConfirmation
   });
 }
 
@@ -1731,11 +1700,7 @@ function renderClassConfirmation() {
   textNodes.classConfirmation.textContent = formatText(locale.classSaved, { number: slot.metadata.slotId });
 }
 
-function showScreen(screenName) {
-  Object.entries(screens).forEach(([name, screen]) => {
-    screen.hidden = name !== screenName;
-  });
-}
+const { showScreen } = createScreenRouter(screens);
 
 function setLanguage(language) {
   if (!translations[language]) {
