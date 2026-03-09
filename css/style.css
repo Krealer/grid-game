@@ -284,6 +284,25 @@ h1 {
   box-shadow: inset 0 0 0 1px rgba(255, 236, 194, 0.35);
 }
 
+
+
+.grid-board[data-zone-type='safe_village'] {
+  background: #1b2a1d;
+  border-color: #8dc29a;
+}
+
+.grid-board[data-zone-type='safe_village'] .tile-ground {
+  background:
+    linear-gradient(180deg, #4f7a53 0%, #3f6645 100%);
+  border-color: #aed7b6;
+}
+
+.grid-board[data-zone-type='safe_village'] .tile-wall {
+  background:
+    linear-gradient(180deg, #5a4330 0%, #3e2c1d 100%);
+  border-color: #d2b38d;
+}
+
 .tile-healing {
   background:
     linear-gradient(135deg, #1a7f54 0%, #3ad889 100%);
@@ -404,6 +423,21 @@ h1 {
   top: 10%;
   border-radius: 50%;
   background: #4da3ff;
+}
+
+
+
+.npc-piece-service_npc {
+  border-color: #f2d97a;
+  box-shadow: 0 0 0 2px rgb(242 217 122 / 30%);
+}
+
+.npc-piece-service_npc::after {
+  content: '';
+  position: absolute;
+  inset: 25%;
+  border-radius: 20%;
+  border: 2px solid #f7efc7;
 }
 
 .door-piece {

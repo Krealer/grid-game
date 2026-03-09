@@ -4,10 +4,12 @@ import {
   SECOND_MAP_ENTRY,
   STARTER_DOOR,
   FIRE_BIOME_MAP_ID,
-  FIRE_BIOME_MAP_ENTRY
+  FIRE_BIOME_MAP_ENTRY,
+  SAFE_VILLAGE_MAP_ID,
+  SAFE_VILLAGE_MAP_ENTRY
 } from '../utils/constants.js';
 import { STARTER_ENEMY_STARTS, SECOND_MAP_ENEMY_STARTS, FIRE_BIOME_MAP_ENEMY_STARTS } from './enemies.js';
-import { STARTER_NPC_TEMPLATE, RECRUITABLE_NPC_TEMPLATE } from './dialogue.js';
+import { STARTER_NPC_TEMPLATE, RECRUITABLE_NPC_TEMPLATE, SAFE_VILLAGE_LORE_NPC_TEMPLATE, SAFE_VILLAGE_GUIDE_NPC_TEMPLATE, SAFE_VILLAGE_SERVICE_NPC_TEMPLATE } from './dialogue.js';
 
 export const SECOND_MAP_HEALING_TILES = [{ id: 'healing_tile_second_01', type: 'healing_tile', x: 8, y: 10 }];
 
@@ -33,6 +35,22 @@ const SECOND_MAP_LAYOUT = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], [1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1], [1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1], [1, 0, 1, 0, 1, 2, 2, 2, 0, 1, 0, 1], [1, 0, 0, 0, 1, 1, 1, 2, 0, 0, 0, 1], [1, 0, 1, 0, 0, 0, 2, 2, 0, 1, 0, 1], [1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1], [1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1], [1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1], [1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ];
 
+
+
+const SAFE_VILLAGE_MAP_LAYOUT = [
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1],
+  [1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1],
+  [1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+  [1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1],
+  [1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1],
+  [1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+];
 const FIRE_BIOME_MAP_LAYOUT = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
   [1, 0, 0, 0, 1, 3, 0, 0, 0, 0, 0, 1],
@@ -66,9 +84,21 @@ export const MAP_DEFINITIONS = {
     enemies: SECOND_MAP_ENEMY_STARTS,
     npcs: [RECRUITABLE_NPC_TEMPLATE],
     doors: [
-      { id: 'door_second_to_fire_01', type: 'door', x: 10, y: 10, targetMapId: FIRE_BIOME_MAP_ID, targetSpawn: FIRE_BIOME_MAP_ENTRY }
+      { id: 'door_second_to_fire_01', type: 'door', x: 10, y: 10, targetMapId: FIRE_BIOME_MAP_ID, targetSpawn: FIRE_BIOME_MAP_ENTRY },
+      { id: 'door_second_to_safe_village_01', type: 'door', x: 2, y: 10, targetMapId: SAFE_VILLAGE_MAP_ID, targetSpawn: SAFE_VILLAGE_MAP_ENTRY }
     ],
     healingTiles: SECOND_MAP_HEALING_TILES
+  },
+  [SAFE_VILLAGE_MAP_ID]: {
+    id: SAFE_VILLAGE_MAP_ID,
+    metadata: { nameKey: 'safeVillageMapName', zoneType: 'safe_village' },
+    layout: SAFE_VILLAGE_MAP_LAYOUT,
+    spawn: SAFE_VILLAGE_MAP_ENTRY,
+    enemies: [],
+    npcs: [SAFE_VILLAGE_LORE_NPC_TEMPLATE, SAFE_VILLAGE_GUIDE_NPC_TEMPLATE, SAFE_VILLAGE_SERVICE_NPC_TEMPLATE],
+    doors: [
+      { id: 'door_safe_village_to_second_01', type: 'door', x: 6, y: 11, targetMapId: SECOND_MAP_ID, targetSpawn: { x: 2, y: 10 } }
+    ]
   },
   [FIRE_BIOME_MAP_ID]: {
     id: FIRE_BIOME_MAP_ID,
