@@ -132,7 +132,7 @@ Examples:
 - door ids: `door_starter_exit`
 - key ids: `key_story`, `key_no_story`
 - medal ids: `medal_first_enemy`
-- companion ids: `companion_future_01`
+- companion ids: `companion_rowan_01`
 - item ids: `item_potion_small`
 
 Validation rule summary:
@@ -175,6 +175,7 @@ The following structures already exist in the canonical schema and are reserved 
 - recruitable companion foundations:
   - `party.recruitedCompanionIds`
   - `party.activePartyMemberIds`
+  - `party.memberStates` stores persistent progression state for both `main_player` and recruited companions (same canonical member shape: class/element/level/exp/hp/attack).
   - companion origin data is stored in stable companion definitions (for example `companion_rowan_01` with `originMapId`, `originX`, `originY`) so future remove-and-return flows can restore companions to their discovery location.
 - inventory and gear:
   - `inventory.inventoryItems`
