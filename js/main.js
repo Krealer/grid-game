@@ -5,6 +5,7 @@ import { COMPANION_DEFINITIONS, PLAYER_CLASS_STATS } from './data/characters.js'
 import { DIALOGUE_DEFINITIONS_BY_NPC_ID } from './data/dialogue.js';
 import { translations } from './data/localization.js';
 import { SKILL_DEFINITIONS } from './data/skills.js';
+import { MEDAL_DEFINITIONS, MEDAL_ORDER } from './data/medals.js';
 import { loadRawSlots, persistSlots } from './state/saveSystem.js';
 import { gameState, playerState, dialogueState, battleState } from './state/gameState.js';
 import { createScreenRouter } from './ui/screenRouter.js';
@@ -14,6 +15,7 @@ import { formatText } from './utils/helpers.js';
 const screens = {
   language: document.getElementById('language-screen'),
   menu: document.getElementById('menu-screen'),
+  medals: document.getElementById('medals-screen'),
   save: document.getElementById('save-screen'),
   deleteConfirm: document.getElementById('delete-confirm-screen'),
   element: document.getElementById('element-screen'),
@@ -41,6 +43,7 @@ const textNodes = {
   menuTitle: document.getElementById('menu-title'),
   menuInstruction: document.getElementById('menu-instruction'),
   menuPlay: document.getElementById('menu-play'),
+  menuMedals: document.getElementById('menu-medals'),
   menuBack: document.getElementById('menu-back'),
   saveTitle: document.getElementById('save-title'),
   saveSubtitle: document.getElementById('save-subtitle'),
@@ -102,7 +105,10 @@ const textNodes = {
   infoTitle: document.getElementById('info-title'),
   infoHelper: document.getElementById('info-helper'),
   infoDetails: document.getElementById('info-details'),
-  infoBack: document.getElementById('info-back')
+  infoBack: document.getElementById('info-back'),
+  medalsTitle: document.getElementById('medals-title'),
+  medalsEmpty: document.getElementById('medals-empty'),
+  medalsBack: document.getElementById('medals-back')
 };
 
 const saveSlotsList = document.getElementById('save-slots');
@@ -111,6 +117,7 @@ const dialogueArea = document.getElementById('dialogue-area');
 const dialoguePlayerAvatar = document.getElementById('dialogue-player-avatar');
 const partyActiveList = document.getElementById('party-active-list');
 const partyRecruitedList = document.getElementById('party-recruited-list');
+const medalsList = document.getElementById('medals-list');
 
 
 
@@ -555,6 +562,100 @@ function normalizeMedals(value) {
     .filter((medal) => Boolean(medal.medalId));
 }
 
+
+function formatMedalUnlockedDate(unlockedAt) {
+  if (!unlockedAt) {
+    return null;
+  }
+
+  const localeTag = currentLanguage === 'ja'
+    ? 'ja-JP'
+    : currentLanguage === 'ru'
+      ? 'ru-RU'
+      : currentLanguage === 'ar'
+        ? 'ar'
+        : 'en-US';
+
+  const parsedDate = new Date(unlockedAt);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return unlockedAt;
+  }
+
+  return new Intl.DateTimeFormat(localeTag, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(parsedDate);
+}
+
+function unlockMedal(slotId, medalId) {
+  if (!slotId || !medalId || !MEDAL_DEFINITIONS[medalId]) {
+    return false;
+  }
+
+  const slot = getSlotById(slotId);
+  if (!slot) {
+    return false;
+  }
+
+  const medals = normalizeMedals(slot.medals);
+  if (medals.some((medal) => medal.medalId === medalId)) {
+    return false;
+  }
+
+  const unlockedAt = new Date().toISOString();
+  updateSlot(slotId, {
+    medals: [...medals, { medalId, unlockedAt }]
+  });
+
+  return true;
+}
+
+function renderMedalsScreen() {
+  const locale = getLocale();
+  const slot = currentSlotId ? getSlotById(currentSlotId) : null;
+  const medalsById = new Map(normalizeMedals(slot?.medals).map((medal) => [medal.medalId, medal]));
+
+  medalsList.innerHTML = '';
+
+  MEDAL_ORDER.forEach((medalId) => {
+    const medalDefinition = MEDAL_DEFINITIONS[medalId];
+    if (!medalDefinition) {
+      return;
+    }
+
+    const unlockedMedal = medalsById.get(medalId);
+    if (!unlockedMedal) {
+      return;
+    }
+
+    const li = document.createElement('li');
+    li.className = 'medal-row';
+
+    const title = document.createElement('p');
+    title.className = 'medal-title';
+    title.textContent = locale[medalDefinition.titleKey];
+
+    const description = document.createElement('p');
+    description.className = 'medal-description';
+    description.textContent = locale[medalDefinition.descriptionKey];
+
+    const unlockedAt = document.createElement('p');
+    unlockedAt.className = 'medal-date';
+    unlockedAt.textContent = formatText(locale.medalDateEarned, {
+      date: formatMedalUnlockedDate(unlockedMedal.unlockedAt) || unlockedMedal.unlockedAt
+    });
+
+    li.append(title, description, unlockedAt);
+    medalsList.append(li);
+  });
+
+  const hasUnlockedMedals = medalsList.children.length > 0;
+  textNodes.medalsEmpty.hidden = hasUnlockedMedals;
+  textNodes.medalsEmpty.textContent = locale.noMedalsUnlocked;
+}
 
 
 function normalizeDefeatedEnemyIds(defeatedEnemyIds) {
@@ -1416,6 +1517,10 @@ function endBattleVictory() {
   if (currentSlotId) {
     const defeatedEnemyIds = getDefeatedEnemyIdsFromCurrentState();
     synchronizeStarterDoorProgress(currentSlotId, defeatedEnemyIds);
+    const newlyUnlockedFirstEnemyMedal = unlockMedal(currentSlotId, 'medal_first_enemy');
+    if (newlyUnlockedFirstEnemyMedal) {
+      battleState.feedbackKeys = ['medalUnlockedFirstEnemy'];
+    }
   }
 
   battleState.resultMessageKey = dropResult.key;
@@ -1660,10 +1765,13 @@ function renderStaticText() {
   textNodes.menuTitle.textContent = locale.menuTitle;
   textNodes.menuInstruction.textContent = locale.menuInstruction;
   textNodes.menuPlay.textContent = locale.play;
+  textNodes.menuMedals.textContent = locale.medals;
   textNodes.menuBack.textContent = locale.back;
   textNodes.saveTitle.textContent = locale.saveTitle;
   textNodes.saveSubtitle.textContent = locale.saveSubtitle;
   textNodes.saveBack.textContent = locale.back;
+  textNodes.medalsTitle.textContent = locale.medals;
+  textNodes.medalsBack.textContent = locale.back;
   textNodes.elementTitle.textContent = locale.elementQuestion;
   textNodes.elementBack.textContent = locale.back;
   textNodes.classTitle.textContent = locale.classQuestion;
@@ -1713,6 +1821,7 @@ function renderStaticText() {
   });
 
   renderSaveSlots();
+  renderMedalsScreen();
   renderClassConfirmation();
   renderGameplayInfo();
   renderInfoDetails();
@@ -1774,6 +1883,11 @@ function goToMenuScreen() {
 function goToSaveScreen() {
   renderSaveSlots();
   showScreen('save');
+}
+
+function goToMedalsScreen() {
+  renderMedalsScreen();
+  showScreen('medals');
 }
 
 function goToElementScreen(slotId) {
@@ -1963,6 +2077,7 @@ function writeCurrentGameToSlot() {
   });
 
   renderSaveSlots();
+  renderMedalsScreen();
   renderInfoDetails();
   return true;
 }
@@ -2004,6 +2119,7 @@ function confirmDeleteSlot() {
 
   pendingDeleteSlotId = null;
   renderSaveSlots();
+  renderMedalsScreen();
   showScreen('save');
 }
 
@@ -2520,7 +2636,9 @@ languageButtons.forEach((button) => {
 
 textNodes.menuBack.addEventListener('click', goToLanguageScreen);
 textNodes.menuPlay.addEventListener('click', goToSaveScreen);
+textNodes.menuMedals.addEventListener('click', goToMedalsScreen);
 textNodes.saveBack.addEventListener('click', goToMenuScreen);
+textNodes.medalsBack.addEventListener('click', goToMenuScreen);
 textNodes.elementBack.addEventListener('click', goToSaveScreen);
 textNodes.classBack.addEventListener('click', () => {
   textNodes.classConfirmation.textContent = '';

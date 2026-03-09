@@ -1101,3 +1101,35 @@ html[dir='rtl'] #party-back {
     height: min(20vw, 150px);
   }
 }
+
+
+.medals-list {
+  margin-top: 0.75rem;
+}
+
+.medal-row {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #0b1329;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  list-style: none;
+  text-align: start;
+}
+
+.medal-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.medal-description,
+.medal-date {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+html[dir='rtl'] .medal-row {
+  text-align: right;
+}
