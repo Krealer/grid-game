@@ -6,6 +6,7 @@ export const RECRUITABLE_NPC_TEMPLATE = { id: 'npc_recruit_01', type: 'recruitab
 export const SAFE_VILLAGE_LORE_NPC_TEMPLATE = { id: 'npc_safe_villager_lore_01', type: 'npc', x: 3, y: 3, nameKey: 'npcSafeLoreMira' };
 export const SAFE_VILLAGE_GUIDE_NPC_TEMPLATE = { id: 'npc_safe_village_guide_01', type: 'npc', x: 6, y: 5, nameKey: 'npcSafeGuideToma' };
 export const SAFE_VILLAGE_HEALER_NPC_TEMPLATE = { id: 'npc_safe_healer_01', type: 'service_npc', x: 8, y: 8, nameKey: 'npcSafeHealerNia', serviceTag: 'healer', originMapId: SAFE_VILLAGE_MAP_ID, originX: 8, originY: 8 };
+export const SAFE_VILLAGE_GEAR_NPC_TEMPLATE = { id: 'npc_safe_gear_01', type: 'service_npc', x: 9, y: 5, nameKey: 'npcSafeGearKoa', serviceTag: 'gear_helper', originMapId: SAFE_VILLAGE_MAP_ID, originX: 9, originY: 5 };
 
 
 const STARTER_GUIDE_DIALOGUE_NODES = {
@@ -65,6 +66,33 @@ const SAFE_HEALER_DIALOGUE_NODES = {
   declined: { id: 'declined', speaker: 'npc', textKey: 'npcSafeHealerDeclined', nextNodeId: null }
 };
 
+const SAFE_GEAR_DIALOGUE_NODES = {
+  first_reward: {
+    id: 'first_reward',
+    speaker: 'npc',
+    textKey: 'npcSafeGearIntro',
+    nextNodeId: 'reward_given',
+    effects: {
+      grantGearItemId: 'item_travelers_boots',
+      npcFlags: {
+        npc_safe_gear_item_given: true
+      }
+    }
+  },
+  reward_given: {
+    id: 'reward_given',
+    speaker: 'npc',
+    textKey: 'npcSafeGearRewardGiven',
+    nextNodeId: null
+  },
+  followup: {
+    id: 'followup',
+    speaker: 'npc',
+    textKey: 'npcSafeGearFollowup',
+    nextNodeId: null
+  }
+};
+
 const getStarterGuideDialogueStartNodeIdForSlot = (slot) => {
   const storyChoiceMade = Boolean(slot?.npcStateFlags?.npc_starter_guide_story_choice_made);
   const storyModeChoice = slot?.playerIdentity?.storyModeChoice || 'story';
@@ -98,11 +126,13 @@ const getSafeGuideStartNodeIdForSlot = (slot) => {
 };
 
 const getSafeHealerStartNodeIdForSlot = () => 'intro';
+const getSafeGearStartNodeIdForSlot = (slot) => (slot?.npcStateFlags?.npc_safe_gear_item_given ? 'followup' : 'first_reward');
 
 export const DIALOGUE_DEFINITIONS_BY_NPC_ID = {
   npc_starter_guide: { nodes: STARTER_GUIDE_DIALOGUE_NODES, getStartNodeId: getStarterGuideDialogueStartNodeIdForSlot },
   npc_recruit_01: { nodes: RECRUIT_ROWAN_DIALOGUE_NODES, getStartNodeId: getRecruitRowanStartNodeIdForSlot },
   npc_safe_villager_lore_01: { nodes: SAFE_LORE_DIALOGUE_NODES, getStartNodeId: () => 'intro' },
   npc_safe_village_guide_01: { nodes: SAFE_GUIDE_DIALOGUE_NODES, getStartNodeId: getSafeGuideStartNodeIdForSlot },
-  npc_safe_healer_01: { nodes: SAFE_HEALER_DIALOGUE_NODES, getStartNodeId: getSafeHealerStartNodeIdForSlot }
+  npc_safe_healer_01: { nodes: SAFE_HEALER_DIALOGUE_NODES, getStartNodeId: getSafeHealerStartNodeIdForSlot },
+  npc_safe_gear_01: { nodes: SAFE_GEAR_DIALOGUE_NODES, getStartNodeId: getSafeGearStartNodeIdForSlot }
 };

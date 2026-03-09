@@ -1470,6 +1470,11 @@ function applyDialogueEffects(effects) {
     keyIds.add(effects.grantKeyId);
   }
 
+  const ownedGearItemIds = new Set(normalizeOwnedGearItemIds(slot.inventory?.inventoryItems));
+  if (effects.grantGearItemId && GEAR_ITEM_DEFINITIONS[effects.grantGearItemId]) {
+    ownedGearItemIds.add(effects.grantGearItemId);
+  }
+
   const recruitmentState = effects.recruitCompanionId ? applyRecruitmentEffects(effects, slot) : {
     recruitedCompanionIds: slot.party?.recruitedCompanionIds || [],
     activePartyMemberIds: slot.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID],
@@ -1502,6 +1507,9 @@ function applyDialogueEffects(effects) {
       activePartyMemberIds: recruitmentState.activePartyMemberIds,
       memberStates: healedMemberStates,
       companionWorldStateFlags: recruitmentState.companionWorldStateFlags
+    },
+    inventory: {
+      inventoryItems: [...ownedGearItemIds]
     }
   });
 
