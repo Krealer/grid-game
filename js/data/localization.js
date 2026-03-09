@@ -144,6 +144,13 @@ export const translations = {
     npcRecruitRowanJoined: 'Great. I\'ll join you from here on out.',
     npcRecruitRowanDeclined: 'No worries. I\'ll wait here if you change your mind.',
     npcRecruitRowanReturned: 'I\'m still part of your crew. I\'ll wait at this spot until you need me active again.',
+    narrator: 'Narrator',
+    eventSecondToFireStoryIntro: 'The fire gate hums as your story key answers it.',
+    eventSecondToFireStoryLore: 'A faded inscription appears: "Beyond this threshold, memory burns brighter than flame."',
+    eventSecondToFireStoryProceed: 'You steady yourself and step through with purpose.',
+    eventSecondToFireNoStoryIntro: 'No-story key confirmed. Gate unlocked. Proceeding.',
+    eventSecondToFireStoryRepeat: 'The fire gate recognizes your story mark and opens again.',
+    eventSecondToFireNoStoryRepeat: 'Gate unlocked. Moving on.',
     dir: 'ltr'
   },
   ja: {
@@ -291,6 +298,13 @@ export const translations = {
     npcRecruitRowanJoined: 'いいだろう。ここからは君に同行する。',
     npcRecruitRowanDeclined: 'わかった。気が変わったらここで待っている。',
     npcRecruitRowanReturned: '仲間としては在籍したままです。再び前衛が必要になったら、ここで声をかけてください。',
+    narrator: '語り手',
+    eventSecondToFireStoryIntro: '物語の鍵に反応して、炎の門が低くうなり始める。',
+    eventSecondToFireStoryLore: 'かすれた刻印が浮かび上がる。『この先では、記憶は炎よりも強く燃える。』',
+    eventSecondToFireStoryProceed: 'あなたは息を整え、意味を胸に門をくぐる。',
+    eventSecondToFireNoStoryIntro: '物語なしキーを確認。門を解錠。進行します。',
+    eventSecondToFireStoryRepeat: '炎の門はあなたの物語の印を認識し、再び開く。',
+    eventSecondToFireNoStoryRepeat: '門を解錠。先へ進む。',
     dir: 'ltr'
   },
   ru: {
@@ -438,6 +452,13 @@ export const translations = {
     npcRecruitRowanJoined: 'Отлично. С этого момента я с тобой.',
     npcRecruitRowanDeclined: 'Ничего страшного. Я подожду здесь, если передумаешь.',
     npcRecruitRowanReturned: 'Я всё ещё в твоём отряде. Подожду здесь, пока снова не понадоблюсь в активной группе.',
+    narrator: 'Рассказчик',
+    eventSecondToFireStoryIntro: 'Огненные врата гудят, отвечая на ключ сюжета.',
+    eventSecondToFireStoryLore: 'Появляется выцветшая надпись: «За этим порогом память горит ярче пламени».',
+    eventSecondToFireStoryProceed: 'Ты собираешься с духом и шаг за шагом входишь внутрь.',
+    eventSecondToFireNoStoryIntro: 'Ключ без сюжета подтверждён. Врата открыты. Продолжаем.',
+    eventSecondToFireStoryRepeat: 'Огненные врата узнают твою сюжетную метку и снова открываются.',
+    eventSecondToFireNoStoryRepeat: 'Врата открыты. Идём дальше.',
     dir: 'ltr'
   },
   ar: {
@@ -585,6 +606,13 @@ export const translations = {
     npcRecruitRowanJoined: 'رائع. سأنضم إليك من الآن فصاعدًا.',
     npcRecruitRowanDeclined: 'لا بأس. سأنتظر هنا إذا غيّرت رأيك.',
     npcRecruitRowanReturned: 'ما زلتُ ضمن فريقك. سأنتظرك هنا حتى تحتاجني مجددًا في المجموعة النشطة.',
+    narrator: 'الراوي',
+    eventSecondToFireStoryIntro: 'تهدر بوابة النار عندما تستجيب لمفتاح القصة.',
+    eventSecondToFireStoryLore: 'يظهر نقش باهت: «ما بعد هذه العتبة، تحترق الذاكرة أشد من اللهب».',
+    eventSecondToFireStoryProceed: 'تتماسك وتتقدم عبر البوابة بثبات.',
+    eventSecondToFireNoStoryIntro: 'تم تأكيد مفتاح بلا قصة. فُتحت البوابة. المتابعة الآن.',
+    eventSecondToFireStoryRepeat: 'تتعرف بوابة النار على علامة قصتك وتفتح من جديد.',
+    eventSecondToFireNoStoryRepeat: 'البوابة مفتوحة. إلى الأمام.',
     dir: 'rtl'
   }
 };
