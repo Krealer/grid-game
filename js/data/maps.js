@@ -22,7 +22,7 @@ export const TERRAIN_TILE_DEFINITIONS = {
   0: { tileType: TERRAIN_TILE_TYPES.GROUND, walkable: true, traversalTagRequired: null },
   1: { tileType: TERRAIN_TILE_TYPES.WALL, walkable: false, traversalTagRequired: null },
   2: { tileType: TERRAIN_TILE_TYPES.SWAMP, walkable: false, traversalTagRequired: 'swamp_walk' },
-  3: { tileType: TERRAIN_TILE_TYPES.EMBER, walkable: false, traversalTagRequired: 'swamp_walk' }
+  3: { tileType: TERRAIN_TILE_TYPES.EMBER, walkable: false, traversalTagRequired: 'lava_walk' }
 };
 
 const STARTER_MAP_LAYOUT = [
@@ -35,16 +35,16 @@ const SECOND_MAP_LAYOUT = [
 
 const FIRE_BIOME_MAP_LAYOUT = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 1],
-  [1, 0, 1, 0, 3, 1, 1, 1, 0, 1, 0, 1],
-  [1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1],
-  [1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1],
-  [1, 0, 0, 0, 3, 0, 0, 1, 0, 1, 0, 1],
-  [1, 1, 1, 0, 3, 1, 0, 1, 0, 1, 0, 1],
-  [1, 0, 0, 0, 3, 1, 0, 0, 0, 1, 0, 1],
-  [1, 0, 1, 1, 3, 1, 1, 1, 0, 1, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-  [1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
+  [1, 0, 0, 0, 1, 3, 0, 0, 0, 0, 0, 1],
+  [1, 0, 1, 0, 1, 3, 0, 1, 0, 1, 0, 1],
+  [1, 0, 1, 0, 0, 3, 0, 0, 0, 1, 0, 1],
+  [1, 0, 1, 1, 0, 3, 1, 1, 0, 1, 0, 1],
+  [1, 0, 0, 0, 0, 3, 0, 1, 0, 1, 0, 1],
+  [1, 1, 1, 0, 1, 3, 0, 1, 0, 1, 0, 1],
+  [1, 0, 0, 0, 1, 3, 0, 0, 0, 1, 0, 1],
+  [1, 0, 1, 0, 1, 3, 1, 1, 0, 1, 0, 1],
+  [1, 0, 0, 0, 1, 3, 0, 1, 0, 0, 0, 1],
+  [1, 0, 1, 1, 1, 3, 0, 1, 1, 1, 0, 1],
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ];
 

@@ -86,5 +86,16 @@ export const GEAR_ITEM_DEFINITIONS = {
     attackBonus: 0,
     movementSpeedBonus: 0.5,
     traversalTagsGranted: []
-  }
+  },
+
+  item_fireproof_boots: {
+    itemId: 'item_fireproof_boots',
+    nameKey: 'gearFireproofBoots',
+    slotType: EQUIPMENT_SLOT_TYPES.MOBILITY,
+    allowedClasses: ['warrior', 'mage'],
+    hpBonus: 0,
+    attackBonus: 0,
+    movementSpeedBonus: 0,
+    traversalTagsGranted: ['lava_walk']
+  },
 };

@@ -257,6 +257,7 @@ h1 {
   background:
     repeating-linear-gradient(135deg, #8f2d11 0 6px, #531708 6px 12px);
   border-color: #f07d3f;
+  box-shadow: inset 0 0 0 1px rgba(255, 170, 120, 0.2);
 }
 
 .grid-board[data-zone-type='fire_biome'] {
@@ -278,8 +279,9 @@ h1 {
 
 .grid-board[data-zone-type='fire_biome'] .tile-ember {
   background:
-    repeating-linear-gradient(45deg, #ff8f2c 0 4px, #da420d 4px 8px, #7f1709 8px 12px);
-  border-color: #ffd08c;
+    repeating-linear-gradient(45deg, #ffb347 0 3px, #ff6a1a 3px 6px, #9e1d0d 6px 10px);
+  border-color: #ffe1a8;
+  box-shadow: inset 0 0 0 1px rgba(255, 236, 194, 0.35);
 }
 
 .tile-healing {
