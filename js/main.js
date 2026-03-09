@@ -14,6 +14,9 @@ import { createScreenRouter } from './ui/screenRouter.js';
 import { renderSaveSlotsUI } from './ui/saveSlotsUI.js';
 import { formatText } from './utils/helpers.js';
 import { calculateEquipmentBonuses, canEquipItemForSlot, createStarterGearInventoryForClass, normalizeEquippedGear, normalizeOwnedGearItemIds } from './systems/gearSystem.js';
+import { createBattlePartyData as createBattlePartyDataFromPartySystem, getFirstActiveCompanionBattler as getFirstActiveCompanionBattlerFromPartySystem, updatePartyBattleMemberHp as updatePartyBattleMemberHpFromPartySystem } from './systems/partySystem.js';
+import { resolveCompanionAction, resolveEnemyActionAgainstPlayer } from './systems/battleSystem.js';
+import { buildBattleSubtitle } from './ui/battleUI.js';
 
 const screens = {
   language: document.getElementById('language-screen'),
@@ -1700,23 +1703,11 @@ function createCompanionBattleData(companionId, memberState) {
 }
 
 function createBattlePartyData(slot) {
-  const memberStates = normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity);
-  const activeIds = slot.party?.activePartyMemberIds?.length ? slot.party.activePartyMemberIds : [MAIN_PARTY_MEMBER_ID];
-  const members = [];
-
-  activeIds.forEach((memberId) => {
-    if (memberId === MAIN_PARTY_MEMBER_ID) {
-      members.push({ id: MAIN_PARTY_MEMBER_ID, kind: 'player', ...createPlayerBattleData(slot) });
-      return;
-    }
-
-    const companionBattleData = createCompanionBattleData(memberId, memberStates[memberId]);
-    if (companionBattleData) {
-      members.push({ ...companionBattleData, kind: 'companion' });
-    }
+  return createBattlePartyDataFromPartySystem(slot, {
+    normalizePartyMemberStates,
+    createPlayerBattleData,
+    createCompanionBattleData
   });
-
-  return members;
 }
 
 function updateMainPartyMemberHp(slotId, currentHp) {
@@ -1744,60 +1735,19 @@ function updateMainPartyMemberHp(slotId, currentHp) {
 }
 
 function updatePartyBattleMemberHp(slotId, partyMembers = []) {
-  const slot = getSlotById(slotId);
-  if (!slot) {
-    return;
-  }
-
-  const activePartyMemberIds = slot.party?.activePartyMemberIds?.length
-    ? slot.party.activePartyMemberIds
-    : [MAIN_PARTY_MEMBER_ID];
-  const memberStates = normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity);
-
-  partyMembers.forEach((member) => {
-    if (!member || !member.id || !memberStates[member.id]) {
-      return;
-    }
-
-    const baseState = memberStates[member.id];
-    const normalizedHp = Math.max(0, Math.min(baseState.maxHp, Math.floor(member.hp)));
-    memberStates[member.id] = {
-      ...baseState,
-      currentHp: normalizedHp
-    };
-  });
-
-  updateSlot(slotId, {
-    party: {
-      activePartyMemberIds,
-      memberStates
-    }
+  updatePartyBattleMemberHpFromPartySystem(slotId, partyMembers, {
+    getSlotById,
+    updateSlot,
+    normalizePartyMemberStates
   });
 }
 
 function getFirstActiveCompanionBattler() {
-  return battleState.partyMembers.find((member) => member.kind === 'companion') || null;
-}
-
-function getDefaultCompanionSkill(companion) {
-  return companion?.skills?.find((skill) => skill.category === 'offensive') || companion?.skills?.[0] || null;
+  return getFirstActiveCompanionBattlerFromPartySystem(battleState.partyMembers);
 }
 
 function addBattleFeedbackEntry(key, params = {}) {
   battleState.feedbackEntries.push({ key, params });
-}
-
-function formatBattleFeedbackEntries(locale) {
-  return battleState.feedbackEntries
-    .map((entry) => {
-      const template = locale[entry.key];
-      if (!template) {
-        return '';
-      }
-      return formatText(template, entry.params || {});
-    })
-    .filter(Boolean)
-    .join(' • ');
 }
 
 function applyExperienceGain(memberState, expAmount) {
@@ -2043,26 +1993,14 @@ function applyPlayerSkill(skillIndex) {
   }
 
   if (companion) {
-    if (companion.hp <= 0) {
-      addBattleFeedbackEntry('battleCompanionUnableToAct', {
-        companion: getPartyMemberDisplayName(companion.id, getLocale())
-      });
-    } else {
-      const companionSkill = getDefaultCompanionSkill(companion);
-      if (companionSkill) {
-        const companionAttackResult = calculateDamageWithElement(companion, companionSkill, enemy);
-        enemy.hp = clampHp(enemy.hp - companionAttackResult.damage);
-        addBattleFeedbackEntry('battleActionLine', {
-          actor: getPartyMemberDisplayName(companion.id, getLocale()),
-          skill: getLocale()[companionSkill.nameKey] || companionSkill.id,
-          target: getLocale()[enemy.nameKey] || enemy.nameKey,
-          damage: companionAttackResult.damage
-        });
-        if (companionAttackResult.feedbackKey) {
-          addBattleFeedbackEntry(companionAttackResult.feedbackKey);
-        }
-      }
-    }
+    resolveCompanionAction({
+      companion,
+      enemy,
+      locale: getLocale(),
+      calculateDamageWithElement,
+      addBattleFeedbackEntry,
+      getPartyMemberDisplayName
+    });
   }
 
   if (enemy.hp <= 0) {
@@ -2072,17 +2010,14 @@ function applyPlayerSkill(skillIndex) {
   }
 
   const enemySkill = enemy.skills[0];
-  const enemyAttackResult = calculateDamageWithElement(enemy, enemySkill, player);
-  player.hp = clampHp(player.hp - enemyAttackResult.damage);
-  addBattleFeedbackEntry('battleActionLine', {
-    actor: getLocale()[enemy.nameKey] || enemy.nameKey,
-    skill: getLocale()[enemySkill.nameKey] || enemySkill.id,
-    target: getLocale().battleStatusPlayer,
-    damage: enemyAttackResult.damage
+  resolveEnemyActionAgainstPlayer({
+    enemy,
+    enemySkill,
+    player,
+    locale: getLocale(),
+    calculateDamageWithElement,
+    addBattleFeedbackEntry
   });
-  if (enemyAttackResult.feedbackKey) {
-    addBattleFeedbackEntry(enemyAttackResult.feedbackKey);
-  }
 
   if (player.hp <= 0) {
     renderBattleUI();
@@ -2215,17 +2150,13 @@ function renderBattleUI() {
   updateHpBar(textNodes.battlePlayerHpFill, player.hp, player.maxHp);
   updateHpBar(textNodes.battleCompanionHpFill, companion?.hp || 0, companion?.maxHp || 1);
 
-  if (battleState.feedbackEntries.length > 0) {
-    textNodes.battleSubtitle.textContent = formatBattleFeedbackEntries(locale);
-  } else if (battleState.menu === BATTLE_MENUS.OFFENSIVE) {
-    textNodes.battleSubtitle.textContent = locale.battleChooseSkill;
-  } else if (battleState.menu === BATTLE_MENUS.DEFENDERS) {
-    textNodes.battleSubtitle.textContent = locale.defendersPlaceholder;
-  } else if (companionCount > 0) {
-    textNodes.battleSubtitle.textContent = formatText(locale.battleCompanionReady, { count: companionCount });
-  } else {
-    textNodes.battleSubtitle.textContent = '';
-  }
+  textNodes.battleSubtitle.textContent = buildBattleSubtitle({
+    locale,
+    feedbackEntries: battleState.feedbackEntries,
+    menu: battleState.menu,
+    companionCount,
+    battleMenus: BATTLE_MENUS
+  });
 
   battleOptionsList.innerHTML = '';
 
