@@ -390,6 +390,18 @@ h1 {
   margin-top: 0.45rem;
 }
 
+.dialogue-choices {
+  margin-top: 0.8rem;
+}
+
+.dialogue-choice {
+  text-align: left;
+}
+
+html[dir='rtl'] .dialogue-choice {
+  text-align: right;
+}
+
 .battle-card {
   background: linear-gradient(180deg, #131c36 0%, #0d1224 100%);
 }
