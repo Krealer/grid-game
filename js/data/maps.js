@@ -4,11 +4,23 @@ import { STARTER_NPC_TEMPLATE, RECRUITABLE_NPC_TEMPLATE } from './dialogue.js';
 
 export const SECOND_MAP_HEALING_TILES = [{ id: 'healing_tile_second_01', type: 'healing_tile', x: 8, y: 10 }];
 
+export const TERRAIN_TILE_TYPES = {
+  GROUND: 'ground',
+  WALL: 'wall',
+  SWAMP: 'swamp'
+};
+
+export const TERRAIN_TILE_DEFINITIONS = {
+  0: { tileType: TERRAIN_TILE_TYPES.GROUND, walkable: true, traversalTagRequired: null },
+  1: { tileType: TERRAIN_TILE_TYPES.WALL, walkable: false, traversalTagRequired: null },
+  2: { tileType: TERRAIN_TILE_TYPES.SWAMP, walkable: false, traversalTagRequired: 'swamp_walk' }
+};
+
 const STARTER_MAP_LAYOUT = [
   [0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,0,0,0,1,1,0],[0,0,0,0,0,1,0,0,0,0,1,0],[0,1,1,1,0,1,0,1,1,1,1,0],[0,0,0,0,0,1,0,0,0,0,0,0],[0,0,1,1,1,1,0,1,1,1,1,0],[0,0,0,0,0,0,0,1,0,0,0,0],[0,1,1,1,1,0,0,1,0,1,1,1],[0,0,0,0,1,0,0,1,0,0,0,0],[0,1,1,0,1,0,0,1,1,1,1,0],[0,0,0,0,1,0,0,0,0,0,0,0],[0,0,1,1,1,1,1,1,1,1,0,0]
 ];
 const SECOND_MAP_LAYOUT = [
-  [1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,1,0,0,0,0,1],[1,0,1,1,0,0,1,0,1,1,0,1],[1,0,1,0,0,0,1,0,0,1,0,1],[1,0,1,0,1,0,0,0,0,1,0,1],[1,0,0,0,1,1,1,1,0,0,0,1],[1,0,1,0,0,0,0,1,0,1,0,1],[1,0,1,1,1,0,0,1,0,1,0,1],[1,0,0,0,1,0,1,1,0,0,0,1],[1,1,1,0,1,0,0,0,0,1,0,1],[1,0,0,0,0,0,1,1,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1]
+  [1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,1,0,0,0,0,1],[1,0,1,1,0,0,1,0,1,1,0,1],[1,0,1,0,0,0,1,0,0,1,0,1],[1,0,1,0,1,2,2,2,0,1,0,1],[1,0,0,0,1,1,1,2,0,0,0,1],[1,0,1,0,0,0,2,2,0,1,0,1],[1,0,1,1,1,0,0,1,0,1,0,1],[1,0,0,0,1,0,1,1,0,0,0,1],[1,1,1,0,1,0,0,0,0,1,0,1],[1,0,0,0,0,0,1,1,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1]
 ];
 
 export const MAP_DEFINITIONS = {
