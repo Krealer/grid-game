@@ -155,6 +155,11 @@ The following structures already exist in the canonical schema and are reserved 
   - `party.activePartyMemberIds`
   - `party.recruitedCompanionIds`
   - `party.memberStates`
+
+- recruitable companion foundations:
+  - `party.recruitedCompanionIds`
+  - `party.activePartyMemberIds`
+  - companion origin data is stored in stable companion definitions (for example `companion_rowan_01` with `originMapId`, `originX`, `originY`) so future remove-and-return flows can restore companions to their discovery location.
 - inventory and gear:
   - `inventory.inventoryItems`
   - `inventory.equippedGear`

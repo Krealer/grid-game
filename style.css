@@ -285,6 +285,22 @@ h1 {
   border: 2px solid #34c759;
 }
 
+.npc-piece-recruitable_npc {
+  border-color: #4da3ff;
+  box-shadow: 0 0 0 2px rgb(77 163 255 / 28%);
+}
+
+.npc-piece-recruitable_npc::after {
+  content: '';
+  position: absolute;
+  width: 26%;
+  height: 26%;
+  right: 10%;
+  top: 10%;
+  border-radius: 50%;
+  background: #4da3ff;
+}
+
 .door-piece {
   border-radius: 12% 12% 10% 10%;
   border: 2px solid #f1d37a;

@@ -43,8 +43,35 @@ const SECOND_MAP_HEALING_TILES = [
   { id: 'healing_tile_second_01', type: 'healing_tile', x: 8, y: 10 }
 ];
 const MAIN_PARTY_MEMBER_ID = 'main_player';
+const MAX_ACTIVE_PARTY_SIZE = 4;
 
 const STARTER_NPC_TEMPLATE = { id: 'npc_starter_guide', type: 'npc', x: 11, y: 11, nameKey: 'npcGuide' };
+const RECRUITABLE_NPC_TEMPLATE = {
+  id: 'npc_recruit_01',
+  type: 'recruitable_npc',
+  x: 9,
+  y: 1,
+  nameKey: 'npcRecruitRowan',
+  companionId: 'companion_rowan_01',
+  originMapId: SECOND_MAP_ID,
+  originX: 9,
+  originY: 1,
+  recruitmentStateFlag: 'npc_recruit_01_recruited'
+};
+
+const COMPANION_DEFINITIONS = {
+  companion_rowan_01: {
+    id: 'companion_rowan_01',
+    npcId: 'npc_recruit_01',
+    nameKey: 'npcRecruitRowan',
+    role: 'future_companion',
+    className: 'warrior',
+    element: 'earth',
+    originMapId: SECOND_MAP_ID,
+    originX: 9,
+    originY: 1
+  }
+};
 
 const STARTER_GUIDE_DIALOGUE_NODES = {
   intro_question: {
@@ -160,6 +187,61 @@ const STARTER_GUIDE_DIALOGUE_FLOW = {
   }
 };
 
+
+const RECRUIT_ROWAN_DIALOGUE_NODES = {
+  intro: {
+    id: 'intro',
+    speaker: 'npc',
+    textKey: 'npcRecruitRowanIntro',
+    nextNodeId: 'ask_join'
+  },
+  ask_join: {
+    id: 'ask_join',
+    speaker: 'npc',
+    textKey: 'npcRecruitRowanPrompt',
+    choices: [
+      {
+        id: 'yes',
+        textKey: 'yes',
+        nextNodeId: 'joined',
+        effects: {
+          recruitCompanionId: 'companion_rowan_01',
+          recruitNpcId: 'npc_recruit_01',
+          recruitNpcFlag: 'npc_recruit_01_recruited'
+        }
+      },
+      {
+        id: 'no',
+        textKey: 'no',
+        nextNodeId: 'declined'
+      }
+    ]
+  },
+  joined: {
+    id: 'joined',
+    speaker: 'npc',
+    textKey: 'npcRecruitRowanJoined',
+    nextNodeId: null
+  },
+  declined: {
+    id: 'declined',
+    speaker: 'npc',
+    textKey: 'npcRecruitRowanDeclined',
+    nextNodeId: null
+  }
+};
+
+const DIALOGUE_DEFINITIONS_BY_NPC_ID = {
+  npc_starter_guide: {
+    nodes: STARTER_GUIDE_DIALOGUE_NODES,
+    getStartNodeId: (slot) => getStarterGuideDialogueStartNodeId(slot)
+  },
+  npc_recruit_01: {
+    nodes: RECRUIT_ROWAN_DIALOGUE_NODES,
+    getStartNodeId: () => 'intro'
+  }
+};
+
 const STARTER_MAP_LAYOUT = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   [0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0],
@@ -204,7 +286,7 @@ const MAP_DEFINITIONS = {
     layout: SECOND_MAP_LAYOUT,
     spawn: SECOND_MAP_ENTRY,
     enemies: SECOND_MAP_ENEMY_STARTS,
-    npcs: [],
+    npcs: [RECRUITABLE_NPC_TEMPLATE],
     doors: [],
     healingTiles: SECOND_MAP_HEALING_TILES
   }
@@ -324,7 +406,7 @@ const playerState = {
 };
 
 let enemyStates = [];
-let npcState = null;
+let npcStates = [];
 
 const playerPiece = document.createElement('div');
 playerPiece.className = 'player-piece';
@@ -373,7 +455,7 @@ const ENEMY_SPECIES_DEFINITIONS = {
   }
 };
 enemyStates = createInitialEnemyStates();
-npcState = createNpcState(enemyStates);
+npcStates = createNpcStates(enemyStates);
 
 const dialogueState = {
   npcId: null,
@@ -487,6 +569,7 @@ const translations = {
     critical: 'Critical!',
     resisted: 'Resisted!',
     npcGuide: 'Village Guide',
+    npcRecruitRowan: 'Rowan',
     dialogueTitle: 'Dialogue',
     dialogueTapToContinue: 'Tap or click to continue.',
     dialogueSelectAnswer: 'Choose one answer.',
@@ -500,6 +583,10 @@ const translations = {
     npcNoStoryModeFollowup: 'Your free path is set. The no-story key marks your route.',
     npcStoryModeDoorSpawnedFollowup: 'The gate has appeared. Follow the story path when you are ready to move forward.',
     npcNoStoryModeDoorSpawnedFollowup: 'The gate has appeared. Your free route is open, so move forward whenever you want.',
+    npcRecruitRowanIntro: 'Hey, I\'m Rowan. I\'ve been waiting for a reliable traveler.',
+    npcRecruitRowanPrompt: 'Would you like me to join your party?',
+    npcRecruitRowanJoined: 'Great. I\'ll join you from here on out.',
+    npcRecruitRowanDeclined: 'No worries. I\'ll wait here if you change your mind.',
     dir: 'ltr'
   },
   ja: {
@@ -587,6 +674,7 @@ const translations = {
     critical: 'クリティカル！',
     resisted: '耐性！',
     npcGuide: '村の案内人',
+    npcRecruitRowan: 'ローワン',
     dialogueTitle: '会話',
     dialogueTapToContinue: 'タップまたはクリックで続行します。',
     dialogueSelectAnswer: '回答を1つ選んでください。',
@@ -600,6 +688,10 @@ const translations = {
     npcNoStoryModeFollowup: '自由ルートは確定しています。ノーストーリーキーがあなたの道しるべです。',
     npcStoryModeDoorSpawnedFollowup: '扉が現れました。準備ができたら、ストーリーの道を進んでください。',
     npcNoStoryModeDoorSpawnedFollowup: '扉が現れました。自由ルートが開いたので、好きなときに先へ進めます。',
+    npcRecruitRowanIntro: 'やあ、ローワンだ。信頼できる旅人を待っていた。',
+    npcRecruitRowanPrompt: '私をパーティに加えますか？',
+    npcRecruitRowanJoined: 'いいだろう。ここからは君に同行する。',
+    npcRecruitRowanDeclined: 'わかった。気が変わったらここで待っている。',
     dir: 'ltr'
   },
   ru: {
@@ -687,6 +779,7 @@ const translations = {
     critical: 'Критический удар!',
     resisted: 'Сопротивление!',
     npcGuide: 'Проводник деревни',
+    npcRecruitRowan: 'Роуэн',
     dialogueTitle: 'Диалог',
     dialogueTapToContinue: 'Нажмите или коснитесь, чтобы продолжить.',
     dialogueSelectAnswer: 'Выберите один ответ.',
@@ -700,6 +793,10 @@ const translations = {
     npcNoStoryModeFollowup: 'Твой свободный путь уже выбран. Ключ без сюжета отмечает твой маршрут.',
     npcStoryModeDoorSpawnedFollowup: 'Врата появились. Когда будешь готов, иди дальше по сюжетному пути.',
     npcNoStoryModeDoorSpawnedFollowup: 'Врата появились. Свободный маршрут открыт, так что двигайся дальше когда захочешь.',
+    npcRecruitRowanIntro: 'Привет, я Роуэн. Я ждал надёжного путешественника.',
+    npcRecruitRowanPrompt: 'Хочешь, чтобы я присоединился к отряду?',
+    npcRecruitRowanJoined: 'Отлично. С этого момента я с тобой.',
+    npcRecruitRowanDeclined: 'Ничего страшного. Я подожду здесь, если передумаешь.',
     dir: 'ltr'
   },
   ar: {
@@ -787,6 +884,7 @@ const translations = {
     critical: 'ضربة حرجة!',
     resisted: 'تمت المقاومة!',
     npcGuide: 'مرشد القرية',
+    npcRecruitRowan: 'روان',
     dialogueTitle: 'حوار',
     dialogueTapToContinue: 'المس أو انقر للمتابعة.',
     dialogueSelectAnswer: 'اختر إجابة واحدة.',
@@ -800,6 +898,10 @@ const translations = {
     npcNoStoryModeFollowup: 'تم تثبيت مسارك الحر. مفتاح بدون قصة يحدد طريقك.',
     npcStoryModeDoorSpawnedFollowup: 'لقد ظهرت البوابة. عندما تصبح جاهزًا، تابع التقدم عبر مسار القصة.',
     npcNoStoryModeDoorSpawnedFollowup: 'لقد ظهرت البوابة. أصبح المسار الحر مفتوحًا، لذا يمكنك التقدم متى أردت.',
+    npcRecruitRowanIntro: 'مرحبًا، أنا روان. كنت أنتظر مسافرًا يمكن الاعتماد عليه.',
+    npcRecruitRowanPrompt: 'هل تريدني أن أنضم إلى فريقك؟',
+    npcRecruitRowanJoined: 'رائع. سأنضم إليك من الآن فصاعدًا.',
+    npcRecruitRowanDeclined: 'لا بأس. سأنتظر هنا إذا غيّرت رأيك.',
     dir: 'rtl'
   }
 };
@@ -882,43 +984,67 @@ function createInitialEnemyStates(mapId = currentMapId) {
   return enemyTemplates.map((enemyTemplate) => createEnemyState(enemyTemplate, occupiedKeys, mapId));
 }
 
-function isValidNpcSpawn(x, y, enemyList) {
-  if (!isGround(x, y) || (x === 0 && y === 0)) {
+function isValidNpcSpawn(x, y, enemyList, occupiedNpcKeys = new Set(), mapId = currentMapId) {
+  const mapSpawn = getMapDefinition(mapId).spawn || { x: 0, y: 0 };
+
+  if (!isGround(x, y, mapId) || (x === mapSpawn.x && y === mapSpawn.y)) {
+    return false;
+  }
+
+  if (getHealingTileAt(x, y, mapId)) {
+    return false;
+  }
+
+  if (occupiedNpcKeys.has(`${x},${y}`)) {
     return false;
   }
 
   return !enemyList.some((enemy) => enemy.x === x && enemy.y === y);
 }
 
-function createNpcState(enemyList, mapId = currentMapId) {
-  const npcTemplate = (getMapDefinition(mapId).npcs || [])[0];
-  if (!npcTemplate) {
-    return null;
+function isRecruitableNpcRecruited(npcTemplate, slot) {
+  if (!npcTemplate || npcTemplate.type !== 'recruitable_npc') {
+    return false;
   }
 
-  const desired = { x: npcTemplate.x, y: npcTemplate.y };
+  const recruitedIds = new Set(slot?.party?.recruitedCompanionIds || []);
+  const flags = slot?.npcStateFlags || {};
+  return recruitedIds.has(npcTemplate.companionId) || Boolean(flags[npcTemplate.recruitmentStateFlag]);
+}
 
-  if (isValidNpcSpawn(desired.x, desired.y, enemyList)) {
-    return { ...npcTemplate, x: desired.x, y: desired.y };
-  }
+function createNpcStates(enemyList, mapId = currentMapId) {
+  const npcTemplates = getMapDefinition(mapId).npcs || [];
+  const slot = currentSlotId ? getSlotById(currentSlotId) : null;
+  const occupiedNpcKeys = new Set();
 
-  for (let y = GRID_SIZE - 1; y >= 0; y -= 1) {
-    for (let x = GRID_SIZE - 1; x >= 0; x -= 1) {
-      if (isValidNpcSpawn(x, y, enemyList)) {
-        return { ...npcTemplate, x, y };
+  return npcTemplates.reduce((result, npcTemplate) => {
+    if (isRecruitableNpcRecruited(npcTemplate, slot)) {
+      return result;
+    }
+
+    const desired = { x: npcTemplate.x, y: npcTemplate.y };
+    if (isValidNpcSpawn(desired.x, desired.y, enemyList, occupiedNpcKeys, mapId)) {
+      occupiedNpcKeys.add(`${desired.x},${desired.y}`);
+      result.push({ ...npcTemplate, x: desired.x, y: desired.y });
+      return result;
+    }
+
+    for (let y = GRID_SIZE - 1; y >= 0; y -= 1) {
+      for (let x = GRID_SIZE - 1; x >= 0; x -= 1) {
+        if (isValidNpcSpawn(x, y, enemyList, occupiedNpcKeys, mapId)) {
+          occupiedNpcKeys.add(`${x},${y}`);
+          result.push({ ...npcTemplate, x, y });
+          return result;
+        }
       }
     }
-  }
 
-  return { ...npcTemplate, x: 0, y: 0 };
+    return result;
+  }, []);
 }
 
 function getNpcAtTile(x, y) {
-  if (!npcState) {
-    return null;
-  }
-
-  return npcState.x === x && npcState.y === y ? npcState : null;
+  return npcStates.find((npc) => npc.x === x && npc.y === y) || null;
 }
 
 function isNpcTile(x, y) {
@@ -1260,9 +1386,13 @@ function normalizeCanonicalSlot(slot, slotId) {
     },
     medals: normalizeMedals(slot?.medals),
     party: {
-      activePartyMemberIds: normalizeStringArray(slot?.party?.activePartyMemberIds).length > 0
-        ? normalizeStringArray(slot?.party?.activePartyMemberIds)
-        : [MAIN_PARTY_MEMBER_ID],
+      activePartyMemberIds: (() => {
+        const normalized = normalizeStringArray(slot?.party?.activePartyMemberIds);
+        const ensuredMain = normalized.includes(MAIN_PARTY_MEMBER_ID)
+          ? normalized
+          : [MAIN_PARTY_MEMBER_ID, ...normalized];
+        return [...new Set(ensuredMain)].slice(0, MAX_ACTIVE_PARTY_SIZE);
+      })(),
       recruitedCompanionIds: normalizeStableIdArray(slot?.party?.recruitedCompanionIds, STABLE_ID_PATTERNS.companion),
       memberStates: normalizePartyMemberStates(slot?.party?.memberStates, slot?.playerIdentity)
     },
@@ -1498,11 +1628,70 @@ function getStarterGuideDialogueStartNodeId(slot) {
 }
 
 function getCurrentDialogueNode() {
-  if (!dialogueState.nodeId) {
+  if (!dialogueState.nodeId || !dialogueState.npcId) {
     return null;
   }
 
-  return STARTER_GUIDE_DIALOGUE_NODES[dialogueState.nodeId] || null;
+  const dialogueDef = DIALOGUE_DEFINITIONS_BY_NPC_ID[dialogueState.npcId];
+  if (!dialogueDef) {
+    return null;
+  }
+
+  return dialogueDef.nodes[dialogueState.nodeId] || null;
+}
+
+function createCompanionMemberState(companionId) {
+  const companion = COMPANION_DEFINITIONS[companionId];
+  if (!companion) {
+    return null;
+  }
+
+  return {
+    id: companion.id,
+    className: companion.className,
+    element: companion.element,
+    currentHp: getMaxHpForClass(companion.className),
+    maxHp: getMaxHpForClass(companion.className)
+  };
+}
+
+function applyRecruitmentEffects(effects, slot) {
+  const companionId = effects.recruitCompanionId;
+  if (!companionId || !COMPANION_DEFINITIONS[companionId]) {
+    return {
+      recruitedCompanionIds: slot.party?.recruitedCompanionIds || [],
+      activePartyMemberIds: slot.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID],
+      memberStates: normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity),
+      npcStateFlags: slot.npcStateFlags || {}
+    };
+  }
+
+  const recruitedCompanionIds = new Set(slot.party?.recruitedCompanionIds || []);
+  const activePartyMemberIds = [...(slot.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID])];
+  const memberStates = normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity);
+  const npcStateFlags = { ...(slot.npcStateFlags || {}) };
+
+  recruitedCompanionIds.add(companionId);
+
+  if (!activePartyMemberIds.includes(companionId) && activePartyMemberIds.length < MAX_ACTIVE_PARTY_SIZE) {
+    activePartyMemberIds.push(companionId);
+  }
+
+  const companionState = createCompanionMemberState(companionId);
+  if (companionState) {
+    memberStates[companionId] = companionState;
+  }
+
+  if (effects.recruitNpcFlag) {
+    npcStateFlags[effects.recruitNpcFlag] = true;
+  }
+
+  return {
+    recruitedCompanionIds: [...recruitedCompanionIds],
+    activePartyMemberIds,
+    memberStates,
+    npcStateFlags
+  };
 }
 
 function applyDialogueEffects(effects) {
@@ -1525,6 +1714,13 @@ function applyDialogueEffects(effects) {
     keyIds.add(effects.grantKeyId);
   }
 
+  const recruitmentState = effects.recruitCompanionId ? applyRecruitmentEffects(effects, slot) : {
+    recruitedCompanionIds: slot.party?.recruitedCompanionIds || [],
+    activePartyMemberIds: slot.party?.activePartyMemberIds || [MAIN_PARTY_MEMBER_ID],
+    memberStates: normalizePartyMemberStates(slot.party?.memberStates, slot.playerIdentity),
+    npcStateFlags: slot.npcStateFlags || {}
+  };
+
   updateSlot(currentSlotId, {
     playerIdentity: {
       storyModeChoice: effects.setStoryModeChoice || slot.playerIdentity.storyModeChoice
@@ -1537,10 +1733,20 @@ function applyDialogueEffects(effects) {
       }
     },
     npcStateFlags: {
-      ...(slot.npcStateFlags || {}),
+      ...recruitmentState.npcStateFlags,
       ...(effects.npcFlags || {})
+    },
+    party: {
+      recruitedCompanionIds: recruitmentState.recruitedCompanionIds,
+      activePartyMemberIds: recruitmentState.activePartyMemberIds,
+      memberStates: recruitmentState.memberStates
     }
   });
+
+  if (effects.recruitNpcId) {
+    npcStates = npcStates.filter((npc) => npc.id !== effects.recruitNpcId);
+    buildGrid();
+  }
 }
 
 function completeDialogueAndReturnToMap() {
@@ -1589,7 +1795,9 @@ function renderDialogueUI() {
     return;
   }
 
-  const speakerName = line.speaker === 'player' ? locale.dialoguePlayerLabel : locale.npcGuide;
+  const activeNpc = npcStates.find((npc) => npc.id === dialogueState.npcId);
+  const npcNameKey = activeNpc?.nameKey || 'npcGuide';
+  const speakerName = line.speaker === 'player' ? locale.dialoguePlayerLabel : (locale[npcNameKey] || locale.npcGuide);
   textNodes.dialogueSpeaker.textContent = speakerName;
   textNodes.dialogueLine.textContent = locale[line.textKey];
 
@@ -1617,13 +1825,18 @@ function renderDialogueUI() {
 }
 
 function enterDialogueMode(npc) {
-  if (!npc || npc.id !== 'npc_starter_guide' || !currentSlotId) {
+  if (!npc || !currentSlotId) {
+    return;
+  }
+
+  const dialogueDef = DIALOGUE_DEFINITIONS_BY_NPC_ID[npc.id];
+  if (!dialogueDef) {
     return;
   }
 
   const slot = getSlotById(currentSlotId);
-  const startNodeId = getStarterGuideDialogueStartNodeId(slot);
-  const startNode = STARTER_GUIDE_DIALOGUE_NODES[startNodeId];
+  const startNodeId = dialogueDef.getStartNodeId(slot);
+  const startNode = dialogueDef.nodes[startNodeId];
 
   if (!startNode || !matchesDialogueConditions(startNode, slot)) {
     return;
@@ -2278,7 +2491,7 @@ function setPlayerPosition(x, y) {
 function initializeMapState(mapId, defeatedEnemyIds = []) {
   currentMapId = getMapDefinition(mapId).id;
   enemyStates = createEnemyStatesFromDefeatedIds(defeatedEnemyIds, currentMapId);
-  npcState = createNpcState(enemyStates, currentMapId);
+  npcStates = createNpcStates(enemyStates, currentMapId);
 }
 
 function canUseStarterDoor(slot) {
@@ -2503,7 +2716,7 @@ function updatePlayerPiece() {
 
 function createNpcPiece(npc) {
   const npcPiece = document.createElement('div');
-  npcPiece.className = 'npc-piece';
+  npcPiece.className = `npc-piece npc-piece-${npc.type || 'npc'}`;
 
   const tilePercent = 100 / GRID_SIZE;
   const tokenSizePercent = tilePercent * 0.68;
@@ -2561,7 +2774,7 @@ function getBattleEnemyMarkup(species, element) {
   `;
 }
 
-function isValidDoorSpawn(x, y, enemyList, npc, playerPos) {
+function isValidDoorSpawn(x, y, enemyList, npcList, playerPos) {
   if (!isGround(x, y)) {
     return false;
   }
@@ -2570,7 +2783,7 @@ function isValidDoorSpawn(x, y, enemyList, npc, playerPos) {
     return false;
   }
 
-  if (npc && npc.x === x && npc.y === y) {
+  if (Array.isArray(npcList) && npcList.some((npc) => npc.x === x && npc.y === y)) {
     return false;
   }
 
@@ -2589,13 +2802,13 @@ function getStarterDoorForMap() {
 
   const playerPos = getCurrentTilePosition();
 
-  if (isValidDoorSpawn(STARTER_DOOR.x, STARTER_DOOR.y, enemyStates, npcState, playerPos)) {
+  if (isValidDoorSpawn(STARTER_DOOR.x, STARTER_DOOR.y, enemyStates, npcStates, playerPos)) {
     return { ...STARTER_DOOR };
   }
 
   for (let y = 0; y < GRID_SIZE; y += 1) {
     for (let x = 0; x < GRID_SIZE; x += 1) {
-      if (isValidDoorSpawn(x, y, enemyStates, npcState, playerPos)) {
+      if (isValidDoorSpawn(x, y, enemyStates, npcStates, playerPos)) {
         return { ...STARTER_DOOR, x, y };
       }
     }
@@ -2673,9 +2886,9 @@ function buildGrid() {
   gridBoard.innerHTML = '';
   const door = getStarterDoorForMap();
   const healingPieces = getHealingTilesForMap().map((tile) => createHealingTilePiece(tile));
-  const npcPiece = npcState ? [createNpcPiece(npcState)] : [];
+  const npcPieces = npcStates.map((npc) => createNpcPiece(npc));
   const doorPieces = door ? [createDoorPiece(door)] : [];
-  gridBoard.append(fragment, ...healingPieces, ...doorPieces, playerPiece, ...enemyStates.map((enemy) => createEnemyPiece(enemy)), ...npcPiece);
+  gridBoard.append(fragment, ...healingPieces, ...doorPieces, playerPiece, ...enemyStates.map((enemy) => createEnemyPiece(enemy)), ...npcPieces);
   applyCoordinateVisibility();
   updatePlayerPiece();
 }
