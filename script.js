@@ -18,6 +18,15 @@ const ENEMY_STARTS = [
   { id: 'enemy_water_slime_01', x: 9, y: 4, nameKey: 'waterSlime', element: 'water' }
 ];
 
+const STARTER_REQUIRED_SLIME_IDS = [
+  'enemy_fire_slime_01',
+  'enemy_earth_slime_01',
+  'enemy_water_slime_01'
+];
+
+const STARTER_DOOR_EVENT_FLAG = 'event_starter_door_spawned';
+const STARTER_DOOR = { id: 'door_starter_exit', type: 'door', x: 10, y: 10 };
+
 const NPC_TEMPLATE = { id: 'npc_starter_guide', type: 'npc', x: 11, y: 11, nameKey: 'npcGuide' };
 
 const STARTER_GUIDE_DIALOGUE_NODES = {
@@ -101,11 +110,33 @@ const STARTER_GUIDE_DIALOGUE_NODES = {
     conditions: {
       storyModeChoice: 'no_story'
     }
+  },
+  post_door_story: {
+    id: 'post_door_story',
+    speaker: 'npc',
+    textKey: 'npcStoryModeDoorSpawnedFollowup',
+    nextNodeId: null,
+    conditions: {
+      storyModeChoice: 'story'
+    }
+  },
+  post_door_no_story: {
+    id: 'post_door_no_story',
+    speaker: 'npc',
+    textKey: 'npcNoStoryModeDoorSpawnedFollowup',
+    nextNodeId: null,
+    conditions: {
+      storyModeChoice: 'no_story'
+    }
   }
 };
 
 const STARTER_GUIDE_DIALOGUE_FLOW = {
   entryNodeId: 'intro_question',
+  postDoorNodeByStoryChoice: {
+    story: 'post_door_story',
+    no_story: 'post_door_no_story'
+  },
   repeatNodeByStoryChoice: {
     story: 'followup_story',
     no_story: 'followup_no_story'
@@ -393,6 +424,8 @@ const translations = {
     npcNoStoryChoiceAccepted: 'Understood. You can travel freely without story guidance. Take this no-story key.',
     npcStoryModeFollowup: 'Your story path is set. The story key will open your way later.',
     npcNoStoryModeFollowup: 'Your free path is set. The no-story key marks your route.',
+    npcStoryModeDoorSpawnedFollowup: 'The gate has appeared. Follow the story path when you are ready to move forward.',
+    npcNoStoryModeDoorSpawnedFollowup: 'The gate has appeared. Your free route is open, so move forward whenever you want.',
     dir: 'ltr'
   },
   ja: {
@@ -489,6 +522,8 @@ const translations = {
     npcNoStoryChoiceAccepted: 'わかりました。物語案内なしで自由に進めます。ノーストーリーキーを受け取ってください。',
     npcStoryModeFollowup: '物語ルートは確定しています。ストーリーキーはこの先で役立ちます。',
     npcNoStoryModeFollowup: '自由ルートは確定しています。ノーストーリーキーがあなたの道しるべです。',
+    npcStoryModeDoorSpawnedFollowup: '扉が現れました。準備ができたら、ストーリーの道を進んでください。',
+    npcNoStoryModeDoorSpawnedFollowup: '扉が現れました。自由ルートが開いたので、好きなときに先へ進めます。',
     dir: 'ltr'
   },
   ru: {
@@ -585,6 +620,8 @@ const translations = {
     npcNoStoryChoiceAccepted: 'Понял. Можешь идти свободно без сюжетного пути. Возьми ключ без сюжета.',
     npcStoryModeFollowup: 'Твой сюжетный путь уже выбран. Сюжетный ключ пригодится дальше.',
     npcNoStoryModeFollowup: 'Твой свободный путь уже выбран. Ключ без сюжета отмечает твой маршрут.',
+    npcStoryModeDoorSpawnedFollowup: 'Врата появились. Когда будешь готов, иди дальше по сюжетному пути.',
+    npcNoStoryModeDoorSpawnedFollowup: 'Врата появились. Свободный маршрут открыт, так что двигайся дальше когда захочешь.',
     dir: 'ltr'
   },
   ar: {
@@ -681,6 +718,8 @@ const translations = {
     npcNoStoryChoiceAccepted: 'مفهوم. يمكنك المتابعة بحرية بدون مسار القصة. خذ مفتاح بدون قصة.',
     npcStoryModeFollowup: 'تم تثبيت مسار القصة الخاص بك. مفتاح القصة سيفتح طريقك لاحقًا.',
     npcNoStoryModeFollowup: 'تم تثبيت مسارك الحر. مفتاح بدون قصة يحدد طريقك.',
+    npcStoryModeDoorSpawnedFollowup: 'لقد ظهرت البوابة. عندما تصبح جاهزًا، تابع التقدم عبر مسار القصة.',
+    npcNoStoryModeDoorSpawnedFollowup: 'لقد ظهرت البوابة. أصبح المسار الحر مفتوحًا، لذا يمكنك التقدم متى أردت.',
     dir: 'rtl'
   }
 };
@@ -945,6 +984,65 @@ function normalizeDefeatedEnemyIds(defeatedEnemyIds) {
   return [...uniqueIds];
 }
 
+function areAllStarterSlimesDefeated(defeatedEnemyIds) {
+  const defeatedSet = new Set(normalizeDefeatedEnemyIds(defeatedEnemyIds));
+  return STARTER_REQUIRED_SLIME_IDS.every((enemyId) => defeatedSet.has(enemyId));
+}
+
+function getStarterDoorState(slot, defeatedEnemyIdsOverride) {
+  const defeatedEnemyIds = defeatedEnemyIdsOverride || slot?.worldProgress?.defeatedEnemyIds;
+  const allStarterSlimesDefeated = areAllStarterSlimesDefeated(defeatedEnemyIds);
+  const openedDoorIds = new Set(slot?.worldProgress?.openedDoorIds || []);
+  const triggeredEventFlags = slot?.worldProgress?.triggeredEventFlags || {};
+  const spawned = openedDoorIds.has(STARTER_DOOR.id)
+    || Boolean(triggeredEventFlags[STARTER_DOOR_EVENT_FLAG])
+    || allStarterSlimesDefeated;
+
+  return {
+    spawned,
+    allStarterSlimesDefeated
+  };
+}
+
+function synchronizeStarterDoorProgress(slotId, defeatedEnemyIdsOverride) {
+  const slot = getSlotById(slotId);
+  if (!slot) {
+    return null;
+  }
+
+  const defeatedEnemyIds = defeatedEnemyIdsOverride || slot.worldProgress?.defeatedEnemyIds || [];
+  const doorState = getStarterDoorState(slot, defeatedEnemyIds);
+
+  if (!doorState.spawned) {
+    return slot;
+  }
+
+  const openedDoorIds = new Set(slot.worldProgress?.openedDoorIds || []);
+  const triggeredEventFlags = {
+    ...(slot.worldProgress?.triggeredEventFlags || {})
+  };
+
+  const needsDoorId = !openedDoorIds.has(STARTER_DOOR.id);
+  const needsEventFlag = !triggeredEventFlags[STARTER_DOOR_EVENT_FLAG];
+
+  if (!needsDoorId && !needsEventFlag) {
+    return slot;
+  }
+
+  openedDoorIds.add(STARTER_DOOR.id);
+  triggeredEventFlags[STARTER_DOOR_EVENT_FLAG] = true;
+
+  updateSlot(slotId, {
+    worldProgress: {
+      defeatedEnemyIds,
+      openedDoorIds: [...openedDoorIds],
+      triggeredEventFlags
+    }
+  });
+
+  return getSlotById(slotId);
+}
+
 function normalizeCanonicalSlot(slot, slotId) {
   const canonical = createCanonicalSlot(slotId);
   const position = normalizePosition({
@@ -1201,6 +1299,13 @@ function matchesDialogueConditions(node, slot) {
 }
 
 function getStarterGuideDialogueStartNodeId(slot) {
+  const postDoorNodeId = STARTER_GUIDE_DIALOGUE_FLOW.postDoorNodeByStoryChoice[slot?.playerIdentity?.storyModeChoice];
+  const doorState = getStarterDoorState(slot);
+
+  if (doorState.spawned && postDoorNodeId) {
+    return postDoorNodeId;
+  }
+
   const storyChoiceMade = Boolean(slot?.npcStateFlags?.npc_starter_guide_story_choice_made);
 
   if (!storyChoiceMade) {
@@ -1508,6 +1613,11 @@ function endBattleVictory() {
 
   if (battleState.enemyId) {
     enemyStates = enemyStates.filter((enemy) => enemy.id !== battleState.enemyId);
+  }
+
+  if (currentSlotId) {
+    const defeatedEnemyIds = getDefeatedEnemyIdsFromCurrentState();
+    synchronizeStarterDoorProgress(currentSlotId, defeatedEnemyIds);
   }
 
   battleState.resultMessageKey = dropResult.key;
@@ -1995,6 +2105,9 @@ function writeCurrentGameToSlot() {
   }
 
   const pos = getCurrentTilePosition();
+  const defeatedEnemyIds = getDefeatedEnemyIdsFromCurrentState();
+  const syncedSlot = synchronizeStarterDoorProgress(currentSlotId, defeatedEnemyIds) || slot;
+
   updateSlot(currentSlotId, {
     playerIdentity: {
       chosenElement: slot.playerIdentity.chosenElement,
@@ -2007,7 +2120,9 @@ function writeCurrentGameToSlot() {
       playerY: pos.y
     },
     worldProgress: {
-      defeatedEnemyIds: getDefeatedEnemyIdsFromCurrentState()
+      defeatedEnemyIds,
+      openedDoorIds: syncedSlot.worldProgress?.openedDoorIds || [],
+      triggeredEventFlags: syncedSlot.worldProgress?.triggeredEventFlags || {}
     },
     settings: {
       showCoordinates
@@ -2119,6 +2234,66 @@ function createEnemyPiece(enemy) {
   return enemyPiece;
 }
 
+function isValidDoorSpawn(x, y, enemyList, npc, playerPos) {
+  if (!isGround(x, y)) {
+    return false;
+  }
+
+  if ((x === 0 && y === 0) || (playerPos && x === playerPos.x && y === playerPos.y)) {
+    return false;
+  }
+
+  if (npc && npc.x === x && npc.y === y) {
+    return false;
+  }
+
+  return !enemyList.some((enemy) => enemy.x === x && enemy.y === y);
+}
+
+function getStarterDoorForMap() {
+  if (!currentSlotId) {
+    return null;
+  }
+
+  const slot = getSlotById(currentSlotId);
+  if (!slot || !getStarterDoorState(slot).spawned) {
+    return null;
+  }
+
+  const playerPos = getCurrentTilePosition();
+
+  if (isValidDoorSpawn(STARTER_DOOR.x, STARTER_DOOR.y, enemyStates, npcState, playerPos)) {
+    return { ...STARTER_DOOR };
+  }
+
+  for (let y = 0; y < GRID_SIZE; y += 1) {
+    for (let x = 0; x < GRID_SIZE; x += 1) {
+      if (isValidDoorSpawn(x, y, enemyStates, npcState, playerPos)) {
+        return { ...STARTER_DOOR, x, y };
+      }
+    }
+  }
+
+  return null;
+}
+
+function createDoorPiece(door) {
+  const doorPiece = document.createElement('div');
+  doorPiece.className = 'door-piece';
+
+  const tilePercent = 100 / GRID_SIZE;
+  const tokenSizePercent = tilePercent * 0.68;
+  const leftPercent = (door.x * tilePercent) + (tilePercent * 0.16);
+  const topPercent = (door.y * tilePercent) + (tilePercent * 0.16);
+
+  doorPiece.style.width = `${tokenSizePercent}%`;
+  doorPiece.style.height = `${tokenSizePercent}%`;
+  doorPiece.style.left = `${leftPercent}%`;
+  doorPiece.style.top = `${topPercent}%`;
+
+  return doorPiece;
+}
+
 function buildGrid() {
   const fragment = document.createDocumentFragment();
 
@@ -2142,8 +2317,10 @@ function buildGrid() {
   }
 
   gridBoard.innerHTML = '';
+  const door = getStarterDoorForMap();
   const npcPiece = npcState ? [createNpcPiece(npcState)] : [];
-  gridBoard.append(fragment, playerPiece, ...enemyStates.map((enemy) => createEnemyPiece(enemy)), ...npcPiece);
+  const doorPieces = door ? [createDoorPiece(door)] : [];
+  gridBoard.append(fragment, ...doorPieces, playerPiece, ...enemyStates.map((enemy) => createEnemyPiece(enemy)), ...npcPiece);
   applyCoordinateVisibility();
   updatePlayerPiece();
 }
@@ -2246,6 +2423,11 @@ function enterBattleMode(enemy) {
 }
 
 function getInteractableAtTile(x, y) {
+  const door = getStarterDoorForMap();
+  if (door && door.x === x && door.y === y) {
+    return { type: 'door', entity: door };
+  }
+
   const enemy = getEnemyAtTile(x, y);
   if (enemy) {
     return { type: 'enemy', entity: enemy };
@@ -2274,6 +2456,8 @@ function tryInteractWithEntity(tileX, tileY) {
     enterBattleMode(target.entity);
   } else if (target.type === 'npc') {
     enterDialogueMode(target.entity);
+  } else if (target.type === 'door') {
+    return true;
   }
 
   return true;
@@ -2501,6 +2685,7 @@ saveSlotsList.addEventListener('click', (event) => {
   showCoordinates = slot.settings?.showCoordinates || false;
   applyCoordinateVisibility();
   enemyStates = createEnemyStatesFromDefeatedIds(slot.worldProgress?.defeatedEnemyIds);
+  synchronizeStarterDoorProgress(slotId, slot.worldProgress?.defeatedEnemyIds);
   npcState = createNpcState(enemyStates);
   buildGrid();
   const savedPos = normalizePosition({
