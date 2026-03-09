@@ -112,6 +112,7 @@ export const translations = {
     npcRecruitRowanPrompt: 'Would you like me to join your party?',
     npcRecruitRowanJoined: 'Great. I\'ll join you from here on out.',
     npcRecruitRowanDeclined: 'No worries. I\'ll wait here if you change your mind.',
+    npcRecruitRowanReturned: 'I\'m still part of your crew. I\'ll wait at this spot until you need me active again.',
     dir: 'ltr'
   },
   ja: {
@@ -227,6 +228,7 @@ export const translations = {
     npcRecruitRowanPrompt: '私をパーティに加えますか？',
     npcRecruitRowanJoined: 'いいだろう。ここからは君に同行する。',
     npcRecruitRowanDeclined: 'わかった。気が変わったらここで待っている。',
+    npcRecruitRowanReturned: '仲間としては在籍したままです。再び前衛が必要になったら、ここで声をかけてください。',
     dir: 'ltr'
   },
   ru: {
@@ -342,6 +344,7 @@ export const translations = {
     npcRecruitRowanPrompt: 'Хочешь, чтобы я присоединился к отряду?',
     npcRecruitRowanJoined: 'Отлично. С этого момента я с тобой.',
     npcRecruitRowanDeclined: 'Ничего страшного. Я подожду здесь, если передумаешь.',
+    npcRecruitRowanReturned: 'Я всё ещё в твоём отряде. Подожду здесь, пока снова не понадоблюсь в активной группе.',
     dir: 'ltr'
   },
   ar: {
@@ -457,6 +460,7 @@ export const translations = {
     npcRecruitRowanPrompt: 'هل تريدني أن أنضم إلى فريقك؟',
     npcRecruitRowanJoined: 'رائع. سأنضم إليك من الآن فصاعدًا.',
     npcRecruitRowanDeclined: 'لا بأس. سأنتظر هنا إذا غيّرت رأيك.',
+    npcRecruitRowanReturned: 'ما زلتُ ضمن فريقك. سأنتظرك هنا حتى تحتاجني مجددًا في المجموعة النشطة.',
     dir: 'rtl'
   }
 };

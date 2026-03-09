@@ -94,7 +94,7 @@ This document defines the **canonical save schema** for this project.
 - `party`: party system foundations and persistent HP state.
   - `activePartyMemberIds`: active battle/world party member ids.
   - `recruitedCompanionIds`: recruited companion ids.
-  - `companionWorldStateFlags`: per-companion world-return state (`following_player`, `at_origin_pending_spawn`, `at_origin`).
+  - `companionWorldStateFlags`: per-companion world-return state (`following_player`, `at_origin_pending_spawn`, `at_origin`). `at_origin_pending_spawn` means removed from active party and queued to respawn at origin; `at_origin` means already present on the origin map as a recruitable-world NPC in recruited/inactive state.
   - `memberStates`: keyed party member state records.
     - `id`: stable party member id.
     - `className`: class key (`warrior` or `mage` for now).
