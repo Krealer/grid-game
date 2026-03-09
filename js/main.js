@@ -1,7 +1,8 @@
-import { GRID_SIZE, TILE_STEP_DURATION, SAVE_SCHEMA_VERSION, DEFAULT_MAP_ID, STABLE_ID_PATTERNS, STARTER_REQUIRED_SLIME_IDS, STARTER_DOOR_EVENT_FLAG, STARTER_DOOR, SECOND_MAP_ID, SECOND_MAP_ENTRY, MAIN_PARTY_MEMBER_ID, MAX_ACTIVE_PARTY_SIZE, STORAGE_LANGUAGE_KEY, STORAGE_SAVE_KEY, SLOT_COUNT, BATTLE_MENUS, ELEMENTAL_ADVANTAGE } from './utils/constants.js';
+import { GRID_SIZE, TILE_SPEED_PER_SECOND, SAVE_SCHEMA_VERSION, DEFAULT_MAP_ID, STABLE_ID_PATTERNS, STARTER_REQUIRED_SLIME_IDS, STARTER_DOOR_EVENT_FLAG, STARTER_DOOR, SECOND_MAP_ID, SECOND_MAP_ENTRY, MAIN_PARTY_MEMBER_ID, MAX_ACTIVE_PARTY_SIZE, STORAGE_LANGUAGE_KEY, STORAGE_SAVE_KEY, SLOT_COUNT, BATTLE_MENUS, ELEMENTAL_ADVANTAGE } from './utils/constants.js';
 import { MAP_DEFINITIONS, SECOND_MAP_HEALING_TILES } from './data/maps.js';
 import { STARTER_ENEMY_STARTS, SECOND_MAP_ENEMY_STARTS, ENEMY_SPECIES_DEFINITIONS } from './data/enemies.js';
 import { COMPANION_DEFINITIONS, PLAYER_CLASS_STATS, LEVEL_GROWTH_BY_CLASS } from './data/characters.js';
+import { GEAR_ITEM_DEFINITIONS, DEFAULT_EQUIPPED_GEAR, EQUIPMENT_SLOT_ORDER, EQUIPMENT_SLOT_TYPES } from './data/gear.js';
 import { DIALOGUE_DEFINITIONS_BY_NPC_ID } from './data/dialogue.js';
 import { translations } from './data/localization.js';
 import { SKILL_DEFINITIONS } from './data/skills.js';
@@ -11,6 +12,7 @@ import { gameState, playerState, dialogueState, battleState } from './state/game
 import { createScreenRouter } from './ui/screenRouter.js';
 import { renderSaveSlotsUI } from './ui/saveSlotsUI.js';
 import { formatText } from './utils/helpers.js';
+import { calculateEquipmentBonuses, canEquipItemForSlot, createStarterGearInventoryForClass, normalizeEquippedGear, normalizeOwnedGearItemIds } from './systems/gearSystem.js';
 
 const screens = {
   language: document.getElementById('language-screen'),
@@ -95,6 +97,7 @@ const textNodes = {
   settingsBack: document.getElementById('settings-back'),
   inventoryTitle: document.getElementById('inventory-title'),
   inventoryHelper: document.getElementById('inventory-helper'),
+  inventoryStats: document.getElementById('inventory-stats'),
   inventoryBack: document.getElementById('inventory-back'),
   partyTitle: document.getElementById('party-title'),
   partyActiveTitle: document.getElementById('party-active-title'),
@@ -117,6 +120,7 @@ const dialogueArea = document.getElementById('dialogue-area');
 const dialoguePlayerAvatar = document.getElementById('dialogue-player-avatar');
 const partyActiveList = document.getElementById('party-active-list');
 const partyRecruitedList = document.getElementById('party-recruited-list');
+const inventoryList = document.getElementById('inventory-list');
 const medalsList = document.getElementById('medals-list');
 
 
@@ -349,6 +353,35 @@ function getAttackForClass(className) {
   return getPlayerStatsByClass(className).attack;
 }
 
+function getSlotInventory(slot) {
+  return {
+    inventoryItems: normalizeOwnedGearItemIds(slot?.inventory?.inventoryItems),
+    equippedGear: normalizeEquippedGear(slot?.inventory?.equippedGear)
+  };
+}
+
+function getEffectiveMemberStats(memberState, slot) {
+  const inventory = getSlotInventory(slot);
+  const bonuses = calculateEquipmentBonuses(inventory.equippedGear, memberState.className);
+  return {
+    ...memberState,
+    maxHp: memberState.maxHp + bonuses.hpBonus,
+    attack: memberState.attack + bonuses.attackBonus,
+    movementSpeedTilesPerSecond: TILE_SPEED_PER_SECOND + bonuses.movementSpeedBonus,
+    traversalTagsGranted: [...bonuses.traversalTagsGranted]
+  };
+}
+
+function getPlayerMovementSpeedTilesPerSecond() {
+  const slot = currentSlotId ? getSlotById(currentSlotId) : null;
+  if (!slot) {
+    return TILE_SPEED_PER_SECOND;
+  }
+
+  const mainMember = getMainPartyMemberState(slot);
+  return getEffectiveMemberStats(mainMember, slot).movementSpeedTilesPerSecond;
+}
+
 function createProgressionMemberState(id, className, element, currentHp = null) {
   const normalizedClass = normalizeStringEnum(className, ['warrior', 'mage'], 'warrior');
   const normalizedElement = normalizeStringEnum(element, ['fire', 'water', 'earth'], 'fire');
@@ -479,7 +512,7 @@ function createCanonicalSlot(slotId) {
     },
     inventory: {
       inventoryItems: [],
-      equippedGear: {}
+      equippedGear: { ...DEFAULT_EQUIPPED_GEAR }
     }
   };
 }
@@ -808,8 +841,8 @@ function normalizeCanonicalSlot(slot, slotId) {
       companionWorldStateFlags: normalizeCompanionWorldStateFlags(slot?.party?.companionWorldStateFlags)
     },
     inventory: {
-      inventoryItems: normalizeStableIdArray(slot?.inventory?.inventoryItems, STABLE_ID_PATTERNS.item),
-      equippedGear: normalizeStringValueRecord(slot?.inventory?.equippedGear)
+      inventoryItems: normalizeOwnedGearItemIds(normalizeStableIdArray(slot?.inventory?.inventoryItems, STABLE_ID_PATTERNS.item)),
+      equippedGear: normalizeEquippedGear(normalizeStringValueRecord(slot?.inventory?.equippedGear))
     }
   };
 }
@@ -824,6 +857,9 @@ function normalizeLegacySlot(slot, slotId) {
   canonical.playerWorldPosition.playerY = position.y;
   canonical.worldProgress.defeatedEnemyIds = normalizeDefeatedEnemyIds(slot?.defeatedEnemyIds);
   canonical.party.memberStates = normalizePartyMemberStates(canonical.party.memberStates, canonical.playerIdentity);
+  if (canonical.playerIdentity.chosenClass) {
+    canonical.inventory.inventoryItems = createStarterGearInventoryForClass(canonical.playerIdentity.chosenClass);
+  }
   return canonical;
 }
 
@@ -1005,8 +1041,9 @@ function renderInfoDetails() {
     }),
     `${locale.levelLabel}: ${mainMember.level}`,
     `${locale.expLabel}: ${mainMember.currentExp} / ${mainMember.expToNextLevel}`,
-    `${locale.hp}: ${mainMember.currentHp} / ${mainMember.maxHp}`,
-    `${locale.attack}: ${mainMember.attack}`,
+    `${locale.hp}: ${mainMember.currentHp} / ${effectiveMainMember.maxHp}`,
+    `${locale.attack}: ${effectiveMainMember.attack}`,
+    `${locale.movementSpeed}: ${effectiveMainMember.movementSpeedTilesPerSecond.toFixed(1)}`,
     formatText(locale.infoCoordinates, { x: currentPos.x, y: currentPos.y })
   ];
 
@@ -1070,6 +1107,107 @@ function renderPartyScreen() {
 
   textNodes.partyActiveEmpty.textContent = activeCompanionIds.length ? '' : locale.noRemovableCompanions;
   textNodes.partyRecruitedEmpty.textContent = recruitedCompanionIds.length ? '' : locale.noCompanionsRecruited;
+}
+
+function getEquipmentSlotLabelKey(slotType, className) {
+  if (slotType === EQUIPMENT_SLOT_TYPES.HEAD_OR_ARMOR) {
+    return className === 'mage' ? 'gearHat' : 'gearArmour';
+  }
+  if (slotType === EQUIPMENT_SLOT_TYPES.WEAPON) {
+    return className === 'mage' ? 'gearStaff' : 'gearSword';
+  }
+  return className === 'mage' ? 'gearCape' : 'gearBoots';
+}
+
+function renderInventoryScreen() {
+  const locale = getLocale();
+  const slot = currentSlotId ? getSlotById(currentSlotId) : null;
+  inventoryList.innerHTML = '';
+
+  if (!slot) {
+    textNodes.inventoryHelper.textContent = locale.inventoryEmpty;
+    textNodes.inventoryStats.textContent = '';
+    return;
+  }
+
+  const className = slot.playerIdentity?.chosenClass || 'warrior';
+  const inventory = getSlotInventory(slot);
+  const mainMember = getMainPartyMemberState(slot);
+  const effectiveMainMember = getEffectiveMemberStats(mainMember, slot);
+
+  textNodes.inventoryHelper.textContent = locale.equipmentTitle;
+  textNodes.inventoryStats.textContent = `${locale.hp}: ${effectiveMainMember.maxHp} • ${locale.attack}: ${effectiveMainMember.attack} • ${locale.movementSpeed}: ${effectiveMainMember.movementSpeedTilesPerSecond.toFixed(1)}`;
+
+  EQUIPMENT_SLOT_ORDER.forEach((slotType) => {
+    const equippedItemId = inventory.equippedGear[slotType];
+    const equippedItem = GEAR_ITEM_DEFINITIONS[equippedItemId];
+    const row = document.createElement('li');
+    row.className = 'party-row';
+
+    const slotLabel = document.createElement('p');
+    slotLabel.textContent = `${locale[getEquipmentSlotLabelKey(slotType, className)]}: ${equippedItem ? locale[equippedItem.nameKey] : locale.empty}`;
+    row.append(slotLabel);
+
+    inventory.inventoryItems.forEach((itemId) => {
+      const item = GEAR_ITEM_DEFINITIONS[itemId];
+      if (!item || item.slotType !== slotType || !item.allowedClasses.includes(className)) {
+        return;
+      }
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'menu-option party-remove-button';
+      button.dataset.equipSlotType = slotType;
+      button.dataset.equipItemId = item.itemId;
+      button.textContent = `${locale.equip}: ${locale[item.nameKey]}`;
+      if (equippedItemId === item.itemId) {
+        button.disabled = true;
+      }
+      row.append(button);
+    });
+
+    inventoryList.append(row);
+  });
+}
+
+function handleEquipItem(slotType, itemId) {
+  if (!currentSlotId) {
+    return;
+  }
+
+  const slot = getSlotById(currentSlotId);
+  if (!slot) {
+    return;
+  }
+
+  const className = slot.playerIdentity?.chosenClass || 'warrior';
+  const inventory = getSlotInventory(slot);
+  const allowed = canEquipItemForSlot({
+    className,
+    slotType,
+    itemId,
+    ownedGearItemIds: inventory.inventoryItems
+  });
+
+  if (!allowed) {
+    return;
+  }
+
+  updateSlot(currentSlotId, {
+    inventory: {
+      inventoryItems: inventory.inventoryItems,
+      equippedGear: {
+        ...inventory.equippedGear,
+        [slotType]: itemId
+      }
+    }
+  });
+
+  const updatedSlot = getSlotById(currentSlotId);
+  const updatedMainMember = getMainPartyMemberState(updatedSlot);
+  updateMainPartyMemberHp(currentSlotId, Math.min(updatedMainMember.currentHp, getEffectiveMemberStats(updatedMainMember, updatedSlot).maxHp));
+  renderInventoryScreen();
+  renderInfoDetails();
 }
 
 function removeCompanionFromActiveParty(companionId) {
@@ -1402,6 +1540,7 @@ function getPlayerOffensiveSkills(className, element) {
 
 function createPlayerBattleData(slot) {
   const mainMember = getMainPartyMemberState(slot);
+  const effectiveMainMember = getEffectiveMemberStats(mainMember, slot);
   const chosenClass = mainMember.className || slot.playerIdentity?.chosenClass || 'warrior';
   const chosenElement = mainMember.element || slot.playerIdentity?.chosenElement || 'fire';
 
@@ -1411,9 +1550,9 @@ function createPlayerBattleData(slot) {
     level: mainMember.level,
     currentExp: mainMember.currentExp,
     expToNextLevel: mainMember.expToNextLevel,
-    maxHp: mainMember.maxHp,
-    hp: Math.max(0, Math.min(mainMember.maxHp, mainMember.currentHp)),
-    attack: mainMember.attack,
+    maxHp: effectiveMainMember.maxHp,
+    hp: Math.max(0, Math.min(effectiveMainMember.maxHp, mainMember.currentHp)),
+    attack: effectiveMainMember.attack,
     skills: getPlayerOffensiveSkills(chosenClass, chosenElement)
   };
 }
@@ -1425,7 +1564,8 @@ function updateMainPartyMemberHp(slotId, currentHp) {
   }
 
   const currentMainState = getMainPartyMemberState(slot);
-  const normalizedHp = Math.max(0, Math.min(currentMainState.maxHp, Math.floor(currentHp)));
+  const effectiveMaxHp = getEffectiveMemberStats(currentMainState, slot).maxHp;
+  const normalizedHp = Math.max(0, Math.min(effectiveMaxHp, Math.floor(currentHp)));
 
   updateSlot(slotId, {
     party: {
@@ -1912,7 +2052,8 @@ function renderStaticText() {
   renderSettingsText();
 
   textNodes.inventoryTitle.textContent = locale.inventoryTitle;
-  textNodes.inventoryHelper.textContent = locale.inventoryEmpty;
+  textNodes.inventoryHelper.textContent = locale.equipmentTitle;
+  textNodes.inventoryStats.textContent = '';
   textNodes.inventoryBack.textContent = locale.back;
 
   textNodes.partyTitle.textContent = locale.partyTitle;
@@ -1939,6 +2080,7 @@ function renderStaticText() {
   renderClassConfirmation();
   renderGameplayInfo();
   renderInfoDetails();
+  renderInventoryScreen();
   renderPartyScreen();
   renderBattleUI();
   renderVictoryScreen();
@@ -2114,6 +2256,7 @@ function openGameMenu() {
 }
 
 function openInventoryScreen() {
+  renderInventoryScreen();
   showScreen('inventory');
 }
 
@@ -2672,7 +2815,8 @@ function animationStep(timestamp) {
     playerState.lastTimestamp = timestamp;
     playerState.stepElapsed += dt;
 
-    if (playerState.stepElapsed >= TILE_STEP_DURATION) {
+    const effectiveStepDuration = 1 / getPlayerMovementSpeedTilesPerSecond();
+    if (playerState.stepElapsed >= effectiveStepDuration) {
       playerState.tileX = playerState.stepToX;
       playerState.tileY = playerState.stepToY;
       tryActivateHealingTileAtPlayerPosition();
@@ -2880,7 +3024,7 @@ elementButtons.forEach((button) => {
       },
       inventory: {
         inventoryItems: [],
-        equippedGear: {}
+        equippedGear: { ...DEFAULT_EQUIPPED_GEAR }
       },
       settings: {
         showCoordinates: false
@@ -2920,6 +3064,10 @@ classButtons.forEach((button) => {
         memberStates: {
           [MAIN_PARTY_MEMBER_ID]: createMainPartyMemberState(button.dataset.class, chosenElement)
         }
+      },
+      inventory: {
+        inventoryItems: createStarterGearInventoryForClass(button.dataset.class),
+        equippedGear: { ...DEFAULT_EQUIPPED_GEAR }
       }
     });
 
@@ -2976,6 +3124,15 @@ partyActiveList.addEventListener('click', (event) => {
   }
 
   removeCompanionFromActiveParty(removeButton.dataset.removeCompanionId);
+});
+
+inventoryList.addEventListener('click', (event) => {
+  const equipButton = event.target.closest('button[data-equip-slot-type][data-equip-item-id]');
+  if (!equipButton || screens.inventory.hidden) {
+    return;
+  }
+
+  handleEquipItem(equipButton.dataset.equipSlotType, equipButton.dataset.equipItemId);
 });
 
 

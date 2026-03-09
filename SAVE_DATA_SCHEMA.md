@@ -66,8 +66,12 @@ This document defines the **canonical save schema** for this project.
     }
   },
   "inventory": {
-    "inventoryItems": [],
-    "equippedGear": {}
+    "inventoryItems": ["item_rusted_armour"],
+    "equippedGear": {
+      "headOrArmorSlot": "item_rusted_armour",
+      "weaponSlot": null,
+      "mobilitySlot": null
+    }
   }
 }
 ```
@@ -109,7 +113,9 @@ This document defines the **canonical save schema** for this project.
     - `expToNextLevel`: required EXP to reach the next level.
     - `maxHp`: persistent max HP for healing and future party logic.
     - `attack`: persistent attack stat that scales on level-up.
-- `inventory`: future inventory/gear foundations.
+- `inventory`: inventory/gear state.
+  - `inventoryItems`: owned gear item ids.
+  - `equippedGear`: equipped item ids by stable slot key (`headOrArmorSlot`, `weaponSlot`, `mobilitySlot`) with nullable values.
 
 ## Stable ID conventions
 

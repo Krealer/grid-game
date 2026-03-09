@@ -18,6 +18,7 @@ Static game definitions.
 - `dialogue.js`: Dialogue nodes, choice flow, recruit foundations.
 - `npcs.js`: Centralized NPC templates/index.
 - `items.js`: Stable item/key catalog foundations.
+- `gear.js`: Equipment slot types and gear item definitions.
 - `medals.js`: Medal catalog foundations.
 - `localization.js`: Translations for all supported languages.
 
@@ -30,6 +31,7 @@ Mutable runtime and persistence helpers.
 ### `js/systems/`
 Gameplay systems namespace for future growth.
 - `mapSystem.js`, `movementSystem.js`, `battleSystem.js`, `elementSystem.js`, `interactionSystem.js`, `recruitmentSystem.js`, `partySystem.js`, `dialogueSystem.js`, `renderSystem.js`.
+- `gearSystem.js`: Gear normalization, equip validation, and equipment bonus calculation.
 
 ### `js/ui/`
 UI/screen modules namespace for future extraction.
