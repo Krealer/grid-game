@@ -35,7 +35,7 @@ export const battleState = {
   enemy: null,
   player: null,
   partyMembers: [],
-  feedbackKeys: [],
+  feedbackEntries: [],
   resultMessageKey: 'obtainedNothing',
   resultItemKey: null,
   resultExpGained: 0,
