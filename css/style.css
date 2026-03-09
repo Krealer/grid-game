@@ -24,6 +24,11 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
+
+.screen[hidden] {
+  display: none !important;
+}
+
 .app {
   width: min(94vw, 560px);
 }
