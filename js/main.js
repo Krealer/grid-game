@@ -3329,6 +3329,43 @@ function moveToTile(targetX, targetY) {
   updatePlayerPiece();
 }
 
+function findPathLengthToTarget(start, target) {
+  if (start.x === target.x && start.y === target.y) {
+    return 0;
+  }
+
+  const path = findPath(start, target);
+  if (!path || path.length === 0) {
+    return null;
+  }
+
+  return path.length;
+}
+
+function findApproachTileForEntity(entity) {
+  const start = { x: playerState.tileX, y: playerState.tileY };
+  const candidates = [
+    { x: entity.x + 1, y: entity.y },
+    { x: entity.x - 1, y: entity.y },
+    { x: entity.x, y: entity.y + 1 },
+    { x: entity.x, y: entity.y - 1 }
+  ].filter((tile) => isInsideGrid(tile.x, tile.y) && isWalkable(tile.x, tile.y));
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const reachableCandidates = candidates
+    .map((tile) => ({
+      ...tile,
+      pathLength: findPathLengthToTarget(start, tile)
+    }))
+    .filter((tile) => tile.pathLength !== null)
+    .sort((a, b) => a.pathLength - b.pathLength);
+
+  return reachableCandidates[0] || null;
+}
+
 
 function isOrthogonallyAdjacentToEntity(entity) {
   const distance = Math.abs(playerState.tileX - entity.x) + Math.abs(playerState.tileY - entity.y);
@@ -3378,7 +3415,7 @@ function getInteractableAtTile(x, y) {
 }
 
 function tryInteractWithEntity(tileX, tileY) {
-  if (playerState.moving || !isInsideGrid(tileX, tileY)) {
+  if (!isInsideGrid(tileX, tileY)) {
     return false;
   }
 
@@ -3389,6 +3426,16 @@ function tryInteractWithEntity(tileX, tileY) {
   }
 
   if (!isOrthogonallyAdjacentToEntity(target.entity)) {
+    const approachTile = findApproachTileForEntity(target.entity);
+    if (approachTile) {
+      moveToTile(approachTile.x, approachTile.y);
+      return true;
+    }
+
+    return false;
+  }
+
+  if (playerState.moving) {
     return true;
   }
 
