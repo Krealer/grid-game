@@ -3631,7 +3631,7 @@ function getEventClientPoint(event) {
 
 function addUnifiedPressListener(element, onPress) {
   let suppressSyntheticClickUntil = 0;
-  const SYNTHETIC_CLICK_SUPPRESSION_MS = 350;
+  const SYNTHETIC_CLICK_SUPPRESSION_MS = 900;
   const supportsPointerEvents = typeof window !== 'undefined' && 'PointerEvent' in window;
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
