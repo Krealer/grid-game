@@ -3296,27 +3296,26 @@ function findPath(start, end) {
 
 function moveToTile(targetX, targetY) {
   if (!isInsideGrid(targetX, targetY)) {
-    return;
+    return false;
   }
 
-  lastClickedDestination = { x: targetX, y: targetY };
-
   if (!isWalkable(targetX, targetY)) {
-    return;
+    return false;
   }
 
   const start = { x: playerState.tileX, y: playerState.tileY };
 
   if (targetX === start.x && targetY === start.y) {
-    return;
+    return false;
   }
 
   const path = findPath(start, { x: targetX, y: targetY });
 
   if (!path || path.length === 0) {
-    return;
+    return false;
   }
 
+  lastClickedDestination = { x: targetX, y: targetY };
   playerState.path = path;
   playerState.moving = false;
   playerState.stepToX = start.x;
@@ -3325,6 +3324,7 @@ function moveToTile(targetX, targetY) {
   playerState.lastTimestamp = null;
   beginNextStep();
   updatePlayerPiece();
+  return true;
 }
 
 function findPathLengthToTarget(start, target) {
@@ -3578,8 +3578,7 @@ function handleGridSelection(event) {
     return true;
   }
 
-  moveToTile(x, y);
-  return true;
+  return moveToTile(x, y);
 }
 
 function getGridTileCoordinatesFromEvent(event) {
@@ -3678,10 +3677,35 @@ function bindButtonPress(element, onPress) {
   });
 }
 
-addUnifiedPressListener(gridBoard, (event) => {
-  const handledSelection = handleGridSelection(event);
-  return handledSelection;
-});
+function bindGridMovementInput(element, onGridSelect) {
+  const supportsPointerEvents = typeof window !== 'undefined' && 'PointerEvent' in window;
+
+  element.addEventListener('click', (event) => {
+    onGridSelect(event);
+  });
+
+  const handleTouchLikeSelection = (event) => {
+    const handled = onGridSelect(event) === true;
+    if (handled && event.cancelable) {
+      event.preventDefault();
+    }
+  };
+
+  if (supportsPointerEvents) {
+    element.addEventListener('pointerup', (event) => {
+      if (event.pointerType === 'mouse') {
+        return;
+      }
+
+      handleTouchLikeSelection(event);
+    });
+    return;
+  }
+
+  element.addEventListener('touchend', handleTouchLikeSelection, { passive: false });
+}
+
+bindGridMovementInput(gridBoard, handleGridSelection);
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'F3' || (event.key.toLowerCase() === 'd' && event.shiftKey)) {
